@@ -49,7 +49,8 @@
             lineNumbers: true,
             lineWrapping: true,
             readOnly: true,
-            styleActiveLine: true
+            styleActiveLine: true,
+            viewportMargin: 0,
         }
     );
 

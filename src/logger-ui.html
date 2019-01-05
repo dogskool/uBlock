@@ -10,14 +10,15 @@
 <link rel="stylesheet" type="text/css" href="css/logger-ui-inspector.css">
 <link rel="shortcut icon" type="image/png" href="img/icon_16.png">
 <title data-i18n="statsPageName"></title>
+<style id="vwRendererRuntimeStyles"></style>
 </head>
 <body>
 
 <div class="permatoolbar">
     <select id="pageSelector">
-        <option value="" data-i18n="logAll">
-        <option value="tab_bts" data-i18n="logBehindTheScene">
-        <option value="tab_active" data-i18n="loggerCurrentTab">
+        <option value="0" data-i18n="logAll">
+        <option value="-1" data-i18n="logBehindTheScene">
+        <option value="_" data-i18n="loggerCurrentTab">
     </select>
     <span id="refresh" class="button fa-icon disabled needdom" data-i18n-title="loggerReloadTip">refresh</span>
     <span id="showdom" class="button fa-icon disabled needdom" data-i18n-title="loggerDomInspectorTip">code</span>
@@ -52,15 +53,23 @@
                     <input type="text" placeholder="logFilterPrompt">
                     <span id="filterExprButton" class="button fa-icon expanded" data-i18n-title="loggerRowFiltererBuiltinTip">angle-up</span>
                     <div id="filterExprPicker">
-                        <div><span data-filtex="!" data-i18n="loggerRowFiltererBuiltinNot"></span><span data-filtex="^--$|^<<$|^##" data-i18n="loggerRowFiltererBuiltinBlocked"></span><span data-filtex="^\+\+$|^\*\*$|^#@#" data-i18n="loggerRowFiltererBuiltinAllowed"></span></div>
-                        <div><span data-filtex="!" data-i18n="loggerRowFiltererBuiltinNot"></span><span data-filtex="^(?:css|font)$">css/font</span><span data-filtex="^image$">image</span><span data-filtex="^(?:inline-)?script(?:ing)?$">script</span><span data-filtex="^(?:websocket|xhr)$">xhr</span><span data-filtex="^frame$">frame</span><span data-filtex="^dom$">dom</span></div>
-                        <div><span data-filtex="!" data-i18n="loggerRowFiltererBuiltinNot"></span><span data-filtex="^1$" data-i18n="loggerRowFiltererBuiltin1p"></span><span data-filtex="^3(?:,\d)?$" data-i18n="loggerRowFiltererBuiltin3p"></span></div>
+                        <div><span data-filtex="!" data-i18n="loggerRowFiltererBuiltinNot"></span><span data-filtex="\t--\t|\t<<\t|\t##" data-i18n="loggerRowFiltererBuiltinBlocked"></span><span data-filtex="\t\+\+\t|\t\*\*\t|\t#@#" data-i18n="loggerRowFiltererBuiltinAllowed"></span></div>
+                        <div><span data-filtex="!" data-i18n="loggerRowFiltererBuiltinNot"></span><span data-filtex="\t(?:css|font)\t">css/font</span><span data-filtex="\timage\t">image</span><span data-filtex="\t(?:inline-)?script(?:ing)?\t">script</span><span data-filtex="\t(?:websocket|xhr)\t">xhr</span><span data-filtex="\tframe\t">frame</span><span data-filtex="\tdom\t">dom</span></div>
+                        <div><span data-filtex="!" data-i18n="loggerRowFiltererBuiltinNot"></span><span data-filtex="\t1\t" data-i18n="loggerRowFiltererBuiltin1p"></span><span data-filtex="\t3(?:,\d)?\t" data-i18n="loggerRowFiltererBuiltin3p"></span></div>
                     </div>
                 </span>
             </span>
             <input id="maxEntries" type="text" size="5" data-i18n-title="logMaxEntriesTip">
         </div>
         <div class="vscrollable">
+            <div id="vwRenderer">
+                <div id="vwScroller">
+                    <div id="vwVirtualContent">
+                        <div id="vwContent"></div>
+                    </div>
+                </div>
+                <div id="vwLineSizer" class="logEntry"><div><span>&nbsp;</span></div></div>
+            </div>
             <style id="tabFilterer"></style>
             <table>
                 <colgroup><col><col><col><col><col><col></colgroup>
