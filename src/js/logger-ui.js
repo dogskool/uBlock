@@ -69,10 +69,6 @@ const tabIdFromPageSelector = logger.tabIdFromPageSelector = function() {
 /******************************************************************************/
 /******************************************************************************/
 
-const trJunkyard = [];
-//const tdJunkyard = [];
-//const firstVarDataCol = 1;
-//const lastVarDataIndex = 6;
 const reRFC3986 = /^([^:\/?#]+:)?(\/\/[^\/?#]*)?([^?#]*)(\?[^#]*)?(#.*)?/;
 const netFilteringDialog = uDom.nodeFromId('netFilteringDialog');
 
@@ -107,10 +103,10 @@ let allTabIdsToken;
 /******************************************************************************/
 /******************************************************************************/
 
-var regexFromURLFilteringResult = function(result) {
-    var beg = result.indexOf(' ');
-    var end = result.indexOf(' ', beg + 1);
-    var url = result.slice(beg + 1, end);
+const regexFromURLFilteringResult = function(result) {
+    const beg = result.indexOf(' ');
+    const end = result.indexOf(' ', beg + 1);
+    const url = result.slice(beg + 1, end);
     if ( url === '*' ) {
         return new RegExp('^.*$', 'gi');
     }
@@ -125,11 +121,11 @@ const nodeFromURL = function(url, re) {
     if ( re instanceof RegExp === false ) {
         return document.createTextNode(url);
     }
-    var matches = re.exec(url);
+    const matches = re.exec(url);
     if ( matches === null || matches[0].length === 0 ) {
         return document.createTextNode(url);
     }
-    var node = renderedURLTemplate.cloneNode(true);
+    const node = renderedURLTemplate.cloneNode(true);
     node.childNodes[0].textContent = url.slice(0, matches.index);
     node.childNodes[1].textContent = url.slice(matches.index, re.lastIndex);
     node.childNodes[2].textContent = url.slice(re.lastIndex);
@@ -224,7 +220,7 @@ const renderLogEntries = function(response) {
 
     const addedCount = filteredLoggerEntries.length - previousCount;
     if ( addedCount !== 0 ) {
-        viewPort.update(addedCount);
+        viewPort.updateContent(addedCount);
     }
 };
 
@@ -334,10 +330,11 @@ const viewPort = (function() {
     const vwVirtualContent = document.getElementById('vwVirtualContent');
     const vwContent = document.getElementById('vwContent');
     const vwLineSizer = document.getElementById('vwLineSizer');
+    const vwLogEntryTemplate = document.querySelector('#logEntryTemplate > div');
     const vwEntries = [];
 
-    let vwHeight = vwRenderer.clientHeight;
-    let lineHeight = vwLineSizer.clientHeight;
+    let vwHeight = 0;
+    let lineHeight = 0;
     let wholeHeight = 0;
     let lastTopPix = 0;
     let lastTopRow = 0;
@@ -357,11 +354,11 @@ const viewPort = (function() {
     };
 
     const rowFromScrollTopPix = function(px) {
-        return Math.floor(px / lineHeight);
+        return lineHeight !== 0 ? Math.floor(px / lineHeight) : 0;
     };
 
     // This is called when the browser fired scroll events
-    const scrollChanged = function() {
+    const onScrollChanged = function() {
         const newScrollTopPix = vwScroller.scrollTop;
         const delta = newScrollTopPix - lastTopPix;
         if ( delta === 0 ) { return; }
@@ -376,32 +373,40 @@ const viewPort = (function() {
     };
 
     // Coallesce scroll events
-    const scrollEventHandler = function() {
+    const onScroll = function() {
         if ( scrollTimer !== undefined ) { return; }
         scrollTimer = setTimeout(
             ( ) => {
                 scrollTimer = requestAnimationFrame(( ) => {
                     scrollTimer = undefined;
-                    scrollChanged();
+                    onScrollChanged();
                 });
             },
             1000/32
         );
     };
 
-    vwScroller.addEventListener(
-        'scroll',
-        scrollEventHandler,
-        { passive: true }
-    );
+    vwScroller.addEventListener('scroll', onScroll, { passive: true });
 
-    const geometryChanged = function() {
+    const onLayoutChanged = function() {
         vwHeight = vwRenderer.clientHeight;
-        lineHeight = vwLineSizer.clientHeight;
-
         vwContent.style.height = `${vwScroller.clientHeight}px`;
 
-        const lineCount = Math.ceil(vwHeight / lineHeight);
+        const vExpanded =
+            uDom.nodeFromSelector('#netInspector .vCompactToggler')
+                .classList
+                .contains('vExpanded');
+
+        let newLineHeight =
+            vwLineSizer.querySelector('.oneLine').clientHeight;
+
+        if ( vExpanded ) {
+            newLineHeight *= 4;
+        }
+
+        const lineCount = newLineHeight !== 0
+            ? Math.ceil(vwHeight / newLineHeight) + 1
+            : 0;
         if ( lineCount > vwEntries.length ) {
             do {
                 vwEntries.push(new ViewEntry());
@@ -411,36 +416,72 @@ const viewPort = (function() {
                 vwEntries.pop().dispose();
             } while ( lineCount < vwEntries.length );
         }
-        positionLines();
+
+        const cellWidths = Array.from(
+            vwLineSizer.querySelectorAll('.oneLine span')
+        ).map(el => el.clientWidth + 1);
+        const reservedWidth =
+            cellWidths[0] + cellWidths[2] + cellWidths[4] + cellWidths[5];
+
         const style = document.getElementById('vwRendererRuntimeStyles');
         style.textContent = [
-            '#vwRenderer .logEntry {',
-            `    height: ${lineHeight}px;`,
+            '#vwContent .logEntry {',
+            `    height: ${newLineHeight}px;`,
+            '}',
+            '#vwContent .logEntry > div > span:nth-of-type(1) {',
+            `    width: ${cellWidths[0]}px;`,
+            '}',
+            '#vwContent .logEntry > div > span:nth-of-type(2) {',
+            `    width: calc(calc(100% - ${reservedWidth}px) * 0.25);`,
+            '}',
+            '#vwContent .logEntry > div.messageRealm > span:nth-of-type(2) {',
+            `    width: calc(100% - ${cellWidths[0]}px);`,
+            '}',
+            '#vwContent .logEntry > div > span:nth-of-type(3) {',
+            `    width: ${cellWidths[2]}px;`,
+            '}',
+            '#vwContent .logEntry > div > span:nth-of-type(4) {',
+            `    width: calc(calc(100% - ${reservedWidth}px) * 0.25);`,
+            '}',
+            '#vwContent .logEntry > div > span:nth-of-type(5) {',
+            `    width: ${cellWidths[4]}px;`,
+            '}',
+            '#vwContent .logEntry > div > span:nth-of-type(6) {',
+            `    width: ${cellWidths[5]}px;`,
+            '}',
+            '#vwContent .logEntry > div > span:nth-of-type(7) {',
+            `    width: calc(calc(100% - ${reservedWidth}px) * 0.5);`,
             '}',
             '',
         ].join('\n');
+
+        if ( newLineHeight !== lineHeight ) {
+            lineHeight = newLineHeight;
+            positionLines();
+            uDom.nodeFromId('netInspector')
+                .classList
+                .toggle('vExpanded', vExpanded);
+        }
+
+        updateContent(0);
     };
 
-    const geometryEventHandler = function() {
+    const updateLayout = function() {
         if ( resizeTimer !== undefined ) { return; }
         resizeTimer = setTimeout(
             ( ) => {
                 resizeTimer = requestAnimationFrame(( ) => {
                     resizeTimer = undefined;
-                    geometryChanged();
+                    onLayoutChanged();
                 });
             },
             1000/8
         );
     };
 
-    window.addEventListener(
-        'resize',
-        geometryEventHandler,
-        { passive: true }
-    );
+    window.addEventListener('resize', updateLayout, { passive: true });
 
-    geometryEventHandler();
+    updateLayout();
 
     const renderToDiv = function(vwEntry, i) {
         if ( i >= filteredLoggerEntries.length ) {
@@ -456,7 +497,7 @@ const viewPort = (function() {
         vwEntry.logEntry = details;
 
         const cells = details.textContent.split('\t');
-        const div = document.createElement('div');
+        const div = vwLogEntryTemplate.cloneNode(true);
         const divcl = div.classList;
         let span;
 
@@ -467,9 +508,8 @@ const viewPort = (function() {
         }
 
         // Timestamp
-        span = document.createElement('span');
+        span = div.children[0];
         span.textContent = cells[0];
-        div.appendChild(span);
 
         // Tab id
         if ( details.tabId !== undefined ) {
@@ -483,9 +523,8 @@ const viewPort = (function() {
             if ( details.type !== undefined ) {
                 div.setAttribute('data-type', details.type);
             }
-            span = document.createElement('span');
+            span = div.children[1];
             span.textContent = cells[1];
-            div.appendChild(span);
             return div;
         }
 
@@ -504,9 +543,8 @@ const viewPort = (function() {
                 divcl.add('canLookup');
             }
         }
-        span = document.createElement('span');
+        span = div.children[1];
         span.textContent = cells[1];
-        div.appendChild(span);
 
         // Event
         if ( cells[2] === '--' ) {
@@ -518,9 +556,8 @@ const viewPort = (function() {
         } else if ( cells[2] === '<<' ) {
             divcl.add('redirect');
         }
-        span = document.createElement('span');
+        span = div.children[2];
         span.textContent = cells[2];
-        div.appendChild(span);
 
         // Origin
         if ( details.tabHostname ) {
@@ -529,12 +566,11 @@ const viewPort = (function() {
         if ( details.docHostname ) {
             div.setAttribute('data-dochn', details.docHostname);
         }
-        span = document.createElement('span');
+        span = div.children[3];
         span.textContent = cells[3];
-        div.appendChild(span);
 
         // Partyness
-        span = document.createElement('span');
+        span = div.children[4];
         if ( details.realm === 'network' && details.domain !== undefined ) {
             let indent = '\t';
             let text = details.tabDomain;
@@ -546,12 +582,10 @@ const viewPort = (function() {
             span.setAttribute('data-parties', text);
         }
         span.textContent = cells[4];
-        div.appendChild(span);
 
         // Type
-        span = document.createElement('span');
+        span = div.children[5];
         span.textContent = cells[5];
-        div.appendChild(span);
 
         // URL
         let re = null;
@@ -560,9 +594,8 @@ const viewPort = (function() {
         } else if ( filteringType === 'dynamicUrl' ) {
             re = regexFromURLFilteringResult(filter.rule.join(' '));
         }
-        span = document.createElement('span');
+        span = div.children[6];
         span.appendChild(nodeFromURL(cells[6], re));
-        div.appendChild(span);
 
         return div;
     };
@@ -570,6 +603,7 @@ const viewPort = (function() {
     // The idea is that positioning DOM elements is faster than
     // removing/inserting DOM elements.
     const positionLines = function() {
+        if ( lineHeight === 0 ) { return; }
         let y = -(lastTopPix % lineHeight);
         for ( const vwEntry of vwEntries ) {
             vwEntry.div.style.top = `${y}px`;
@@ -624,7 +658,7 @@ const viewPort = (function() {
         }
     };
 
-    const update = function(addedCount) {
+    const updateContent = function(addedCount) {
         contentChanged(addedCount);
         // Content changed
         if ( addedCount === 0 ) {
@@ -658,7 +692,7 @@ const viewPort = (function() {
         vwScroller.scrollTop = lastTopPix;
     };
 
-    return { update };
+    return { updateContent, updateLayout, };
 })();
 
 /******************************************************************************/
@@ -717,7 +751,6 @@ const synchronizeTabIds = function(newTabIds) {
         loggerEntries = toKeep;
         if ( rowVoided ) {
             rowFilterer.filterAll();
-            viewPort.update(0);
         }
     }
 
@@ -764,6 +797,7 @@ const synchronizeTabIds = function(newTabIds) {
 /******************************************************************************/
 
 // TODO: fix
+/*
 const truncateLog = function(size) {
     if ( size === 0 ) {
         size = 5000;
@@ -776,7 +810,7 @@ const truncateLog = function(size) {
         trJunkyard.push(tbody.removeChild(tr));
     }
 };
-
+*/
 /******************************************************************************/
 
 const onLogBufferRead = function(response) {
@@ -803,7 +837,7 @@ const onLogBufferRead = function(response) {
     // This may have changed meanwhile
     if ( response.maxEntries !== maxEntries ) {
         maxEntries = response.maxEntries;
-        uDom('#maxEntries').val(maxEntries || '');
+        //uDom('#maxEntries').val(maxEntries || '');
     }
 
     if ( Array.isArray(response.tabIds) ) {
@@ -962,6 +996,7 @@ const reloadTab = function(ev) {
 /******************************************************************************/
 
 // TODO: fix
+/*
 const onMaxEntriesChanged = function() {
     const input = uDom.nodeFromId('maxEntries');
     try {
@@ -989,7 +1024,7 @@ const onMaxEntriesChanged = function() {
 
     truncateLog(maxEntries);
 };
-
+*/
 /******************************************************************************/
 /******************************************************************************/
 
@@ -1785,7 +1820,7 @@ const rowFilterer = (function() {
                 filteredLoggerEntryVoidedCount += 1;
             }
         }
-        viewPort.update(0);
+        viewPort.updateContent(0);
         uDom.nodeFromId('filterButton').classList.toggle(
             'active',
             filters.length !== 0
@@ -1902,7 +1937,6 @@ const clearBuffer = function() {
     }
     loggerEntries = toKeep;
     rowFilterer.filterAll();
-    viewPort.update(0);
 
     uDom.nodeFromId('clean').classList.toggle(
         'disabled',
@@ -1931,7 +1965,6 @@ const cleanBuffer = function() {
     }
     loggerEntries = toKeep;
     rowFilterer.filterAll();
-    viewPort.update(0);
 
     uDom.nodeFromId('clean').classList.toggle(
         'disabled',
@@ -1953,10 +1986,11 @@ const pauseNetInspector = function() {
 
 /******************************************************************************/
 
-// TODO: fix
 const toggleVCompactView = function() {
-    uDom.nodeFromId('netInspector').classList.toggle('vCompact');
-    uDom('#netInspector .vExpanded').toggleClass('vExpanded');
+    uDom.nodeFromSelector('#netInspector .vCompactToggler')
+        .classList
+        .toggle('vExpanded');
+    viewPort.updateLayout();
 };
 
 // TODO: fix
@@ -2119,7 +2153,7 @@ uDom.nodeFromId('clean').addEventListener('click', cleanBuffer);
 uDom.nodeFromId('clear').addEventListener('click', clearBuffer);
 
 uDom('#pause').on('click', pauseNetInspector);
-uDom('#maxEntries').on('change', onMaxEntriesChanged);
+//uDom('#maxEntries').on('change', onMaxEntriesChanged);
 uDom('#netInspector table').on('click', 'tr > td:nth-of-type(1)', toggleVCompactRow);
 uDom('#netInspector').on('click', '.logEntry > .canLookup > span:nth-of-type(2)', reverseLookupManager.toggleOn);
 uDom('#netInspector').on('click', '.logEntry > .networkRealm > span:nth-of-type(3)', netFilteringManager.toggleOn);

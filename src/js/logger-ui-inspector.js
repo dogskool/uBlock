@@ -585,7 +585,7 @@ var shutdownInspector = function() {
         inspectorConnectionId = undefined;
     }
     logger.removeAllChildren(domTree);
-    inspector.classList.add('vCompact');
+    inspector.classList.remove('vExpanded');
     inspectedTabId = 0;
 };
 
@@ -605,7 +605,7 @@ var onTabIdChanged = function() {
 /******************************************************************************/
 
 var toggleVCompactView = function() {
-    var state = !inspector.classList.toggle('vCompact');
+    var state = inspector.classList.toggle('vExpanded');
     var branches = document.querySelectorAll('#domInspector li.branch');
     for ( var branch of branches ) {
         branch.classList.toggle('show', state);

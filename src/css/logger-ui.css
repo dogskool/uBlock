@@ -87,7 +87,7 @@ textarea {
     overflow-y: auto;
 }
 
-.vCompact .vCompactToggler.button {
+.inspector:not(.vExpanded) .vCompactToggler.button {
     transform: scaleY(-1)
     }
 .hCompact .hCompactToggler.button {
@@ -124,9 +124,6 @@ textarea {
     }
 #netInspector #filterInput > input {
     min-width: 18em;
-    }
-#netInspector #maxEntries {
-    margin: 0 2em;
     }
 #netInspector #filterExprButton {
     position: absolute;
@@ -184,10 +181,16 @@ textarea {
     background-color: lightblue;
     border: 1px solid lightblue;
     }
+#netInspector .settings {
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    position: absolute;
+    right: 0;
+}
+
 #netInspector .vscrollable {
     overflow: hidden;
     }
-
 #vwRenderer {
     box-sizing: border-box;
     height: 100%;
@@ -216,7 +219,6 @@ textarea {
     left: 0;
     overflow: hidden;
     position: absolute;
-    white-space: nowrap;
     width: 100%;
     }
 #vwRenderer .logEntry:empty {
@@ -224,6 +226,7 @@ textarea {
     }
 #vwRenderer .logEntry > div {
     height: 100%;
+    white-space: nowrap;
     }
 #vwRenderer .logEntry > div.blocked {
     background-color: rgba(192, 0, 0, 0.1);
@@ -277,31 +280,35 @@ body.colorBlind #vwRenderer .logEntry > div.redirect {
     height: 100%;
     overflow: hidden;
     padding: 0.2em;
-    text-overflow: ellipsis;
     vertical-align: middle;
+    white-space: nowrap;
+    word-break: break-all;
     }
 #vwRenderer .logEntry > div > span:first-child {
     border-left: 0;
     }
 #vwRenderer .logEntry > div > span:nth-of-type(1) {
-    width: 4.6em;
     }
 #vwRenderer .logEntry > div > span:nth-of-type(2) {
-    width: 16%;
+    }
+#vwRenderer #vwContent .logEntry > div > span:nth-of-type(2) {
+    text-overflow: ellipsis;
+    }
+.vExpanded #vwRenderer #vwContent .logEntry > div > span:nth-of-type(2) {
+    overflow-y: auto;
+    white-space: pre-line;
     }
 #vwRenderer .logEntry > div.canLookup > span:nth-of-type(2) {
     cursor: zoom-in;
-    }
-#vwRenderer .logEntry > div.messageRealm > span:nth-of-type(2) {
-    width: calc(100% - 4.6em);
     }
 #vwRenderer .logEntry > div.messageRealm[data-type="separator"] > span:nth-of-type(2) {
     text-align: center;
     }
 #vwRenderer .logEntry > div > span:nth-of-type(3) {
     font: 12px monospace;
+    padding-left: 0.3em;
+    padding-right: 0.3em;
     text-align: center;
-    width: 2.1em;
     }
 #vwRenderer .logEntry > div.networkRealm > span:nth-of-type(3) {
     cursor: pointer;
@@ -311,18 +318,23 @@ body.colorBlind #vwRenderer .logEntry > div.redirect {
     }
 #vwRenderer .logEntry > div > span:nth-of-type(4) {
     direction: rtl;
-    width: 20%;
+    }
+#vwRenderer #vwContent .logEntry > div > span:nth-of-type(4) {
+    text-overflow: ellipsis;
+    }
+.vExpanded #vwRenderer #vwContent .logEntry > div > span:nth-of-type(4) {
+    overflow-y: auto;
+    white-space: pre-line;
     }
 #vwRenderer .logEntry > div > span:nth-of-type(5) {
     text-align: center;
-    width: 2.4em;
     }
 /* visual for tabless network requests */
 #vwRenderer .logEntry > div > span:nth-of-type(5) {
     position: relative;
     }
 #vwRenderer .logEntry > div[data-tabid="-1"] > span:nth-of-type(5)::before {
-    border: 5px solid #bbb;
+    border: 5px solid #ccc;
     border-bottom: 0;
     border-top: 0;
     bottom: 0;
@@ -355,10 +367,18 @@ body.colorBlind #vwRenderer .logEntry > div.redirect {
 }
 */
 #vwRenderer .logEntry > div > span:nth-of-type(6) {
-    width: 6em;
+    }
+#vwRenderer #vwContent .logEntry > div > span:nth-of-type(6) {
+    text-overflow: ellipsis;
     }
 #vwRenderer .logEntry > div > span:nth-of-type(7) {
-    width: calc(100% - 4.6em - 16% - 2.1em - 20% - 2.4em - 6em);
+    }
+#vwRenderer #vwContent .logEntry > div > span:nth-of-type(7) {
+    text-overflow: ellipsis;
+    }
+.vExpanded #vwRenderer #vwContent .logEntry > div > span:nth-of-type(7) {
+    overflow-y: auto;
+    white-space: pre-line;
     }
 #vwRenderer .logEntry > div > span:nth-of-type(7) > span > b {
     font-weight: bold;
@@ -391,14 +411,12 @@ body.colorBlind #vwRenderer .logEntry > div.allowed > span:nth-of-type(7) b {
     width: 100%;
     }
 #vwRenderer #vwLineSizer {
-    top: 0;
+    left: 0;
     pointer-events: none;
     position: absolute;
-    left: 0;
+    top: 0;
     visibility: hidden;
-    }
-#vwRenderer #vwLineSizer > span {
-    white-space: pre;
+    width: 100%;
     }
 
 #netInspector tr.cat_info {
@@ -436,6 +454,7 @@ body.colorBlind #netInspector tr.redirect {
     text-align: center;
     }
 
+/* TODO: cleanup */
 body #netInspector td {
     border: 1px solid #ccc;
     border-top: none;

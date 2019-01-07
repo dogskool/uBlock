@@ -27,7 +27,7 @@
 </div>
 
 <div id="inspectors">
-    <div id="domInspector" class="inspector vCompact hCompact">
+    <div id="domInspector" class="inspector hCompact">
         <div class="permatoolbar">
             <div>
                 <span class="button fa-icon vCompactToggler">double-angle-up</span>
@@ -41,7 +41,7 @@
             <ul id="domTree"></ul>
         </div>
     </div>
-    <div id="netInspector" class="inspector vCompact f">
+    <div id="netInspector" class="inspector f">
         <div class="permatoolbar">
             <span class="button fa-icon vCompactToggler">double-angle-up</span>
             <span id="clean" class="button fa-icon disabled">times</span>
@@ -59,7 +59,7 @@
                     </div>
                 </span>
             </span>
-            <input id="maxEntries" type="text" size="5" data-i18n-title="logMaxEntriesTip">
+            <span class="button fa-icon settings">cog</span>
         </div>
         <div class="vscrollable">
             <div id="vwRenderer">
@@ -68,7 +68,9 @@
                         <div id="vwContent"></div>
                     </div>
                 </div>
-                <div id="vwLineSizer" class="logEntry"><div><span>&nbsp;</span></div></div>
+                <div id="vwLineSizer">
+                    <div class="logEntry oneLine"><div><span>00:00:00</span><span>&nbsp;</span><span>**</span><span>&nbsp;</span><span>3,3</span><span>inline-script</span><span>&nbsp;</span></div></div>
+                </div>
             </div>
             <style id="tabFilterer"></style>
             <table>
@@ -81,6 +83,7 @@
 </div>
 
 <div id="templates" style="display: none;">
+    <div id="logEntryTemplate"><div><span></span>&#8203;<span></span>&#8203;<span></span>&#8203;<span></span>&#8203;<span></span>&#8203;<span></span>&#8203;<span></span></div></div>
     <div id="renderedURLTemplate"><span><span></span><b></b><span></span></span></div>
     <div id="netFilteringDialog" class="modalDialog">
         <div class="dialog">
