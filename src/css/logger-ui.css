@@ -261,6 +261,13 @@ body.colorBlind #vwRenderer .logEntry > div.redirect {
 #vwRenderer .logEntry > div[data-type="info"] {
     color: #008;
     }
+#vwRenderer .logEntry > div.voided {
+    opacity: 0.3;
+    }
+#vwRenderer .logEntry > div.voided:hover {
+    opacity: 0.7;
+    }
+
 #vwRenderer .logEntry > div > span {
     border: 1px solid #ccc;
     border-top: 0;
@@ -332,6 +339,7 @@ body.colorBlind #vwRenderer .logEntry > div.redirect {
 #vwRenderer .logEntry > div > span[data-parties]:nth-of-type(5) {
     cursor: default;
     }
+/*
 #vwRenderer .logEntry > div > span[data-parties]:nth-of-type(5):active::after {
     background-color: #feb;
     border: 1px outset #feb;
@@ -345,6 +353,7 @@ body.colorBlind #vwRenderer .logEntry > div.redirect {
     top: -50%;
     white-space: pre;
 }
+*/
 #vwRenderer .logEntry > div > span:nth-of-type(6) {
     width: 6em;
     }

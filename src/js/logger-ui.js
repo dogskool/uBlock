@@ -31,9 +31,12 @@
 
 const messaging = vAPI.messaging;
 const logger = self.logger = { ownerId: Date.now() };
+const logDate = new Date();
+const logDateTimezoneOffset = logDate.getTimezoneOffset() * 60000;
 
 let loggerEntries = [];
 let filteredLoggerEntries = [];
+let filteredLoggerEntryVoidedCount = 0;
 
 let popupLoggerBox;
 let popupLoggerTooltips;
@@ -66,7 +69,6 @@ const tabIdFromPageSelector = logger.tabIdFromPageSelector = function() {
 /******************************************************************************/
 /******************************************************************************/
 
-const tbody = document.querySelector('#netInspector tbody');
 const trJunkyard = [];
 //const tdJunkyard = [];
 //const firstVarDataCol = 1;
@@ -137,262 +139,89 @@ const nodeFromURL = function(url, re) {
 const renderedURLTemplate = document.querySelector('#renderedURLTemplate > span');
 
 /******************************************************************************/
-/*
-const createCellAt = function(tr, index) {
-    let td = tr.cells[index];
-    const mustAppend = !td;
-    if ( mustAppend ) {
-        td = tdJunkyard.pop();
-    }
-    if ( td ) {
-        td.removeAttribute('colspan');
-        td.removeAttribute('data-parties');
-        td.textContent = '';
-    } else {
-        td = document.createElement('td');
-    }
-    if ( mustAppend ) {
-        tr.appendChild(td);
-    }
-    return td;
-};
-*/
-/******************************************************************************/
-/*
-var createRow = function(layout) {
-    let tr = trJunkyard.pop();
-    if ( tr ) {
-        tr.className = '';
-        tr.removeAttribute('data-tabhn');
-        tr.removeAttribute('data-dochn');
-        tr.removeAttribute('data-filter');
-        tr.removeAttribute('data-tabid');
-    } else {
-        tr = document.createElement('tr');
-    }
-    let index = 0;
-    for ( ; index < firstVarDataCol; index++ ) {
-        createCellAt(tr, index);
-    }
-    let i = 1, span = 1, td;
-    for (;;) {
-        td = createCellAt(tr, index);
-        if ( i === lastVarDataIndex ) { break; }
-        if ( layout.charAt(i) !== '1' ) {
-            span += 1;
-        } else {
-            if ( span !== 1 ) {
-                td.setAttribute('colspan', span);
-            }
-            index += 1;
-            span = 1;
-        }
-        i += 1;
-    }
-    if ( span !== 1 ) {
-        td.setAttribute('colspan', span);
-    }
-    index += 1;
-    while ( (td = tr.cells[index]) ) {
-        tdJunkyard.push(tr.removeChild(td));
-    }
-    return tr;
-};
-*/
-/******************************************************************************/
 
-var padTo2 = function(v) {
+const padTo2 = function(v) {
     return v < 10 ? '0' + v : v;
+};
+
+const normalizeToStr = function(s) {
+    return typeof s === 'string' && s !== '' ? s : '';
 };
 
 /******************************************************************************/
 
 const createLogSeparator = function(details, text) {
-    return parseLogEntry({
+    const separator = parseLogEntry({
         tstamp: details.tstamp,
         realm: 'message',
         tabId: details.tabId,
         type: 'separator',
-        text: text,
-        fields: text,
+        textContent: '',
     });
+
+    const textContent = [];
+    logDate.setTime(separator.tstamp - logDateTimezoneOffset);
+    textContent.push(
+        // cell 0
+        padTo2(logDate.getUTCHours()) + ':' +
+            padTo2(logDate.getUTCMinutes()) + ':' +
+            padTo2(logDate.getSeconds()),
+        // cell 1
+        text
+    );
+    separator.textContent = textContent.join('\t');
+
+    if ( details.voided !== undefined ) {
+        separator.voided = true;
+    }
+
+    return separator;
 };
-
-/******************************************************************************/
-/*
-var renderNetLogEntry = function(tr, details) {
-    const trcl = tr.classList;
-    const type = details.type;
-    const url = details.url;
-    let td;
-
-    // If the request is that of a root frame, insert a gap in the table
-    // in order to visually separate entries for different documents. 
-    if ( type === 'main_frame' ) {
-        createGap(details.tabId, url);
-    }
-
-    tr.classList.add('cat_' + details.realm);
-
-    let filter = details.filter || undefined;
-    let filteringType;
-    if ( filter !== undefined ) {
-        if ( typeof filter.source === 'string' ) {
-            filteringType = filter.source;
-            trcl.add(filteringType);
-        }
-    }
-
-    if ( filter !== undefined ) {
-        td = tr.cells[1];
-        if ( filteringType === 'static' ) {
-            td.textContent = filter.raw;
-            trcl.add('canLookup');
-            tr.setAttribute('data-filter', filter.compiled);
-        } else if ( filteringType === 'cosmetic' ) {
-            td.textContent = filter.raw;
-            trcl.add('canLookup');
-        } else {
-            td.textContent = filter.raw;
-        }
-    }
-
-    if ( filter !== undefined ) {
-        td = tr.cells[2];
-        if ( filter.result === 1 ) {
-            trcl.add('blocked');
-            td.textContent = '--';
-        } else if ( filter.result === 2 ) {
-            trcl.add('allowed');
-            td.textContent = '++';
-        } else if ( filter.result === 3 ) {
-            trcl.add('nooped');
-            td.textContent = '**';
-        } else if ( filteringType === 'redirect' ) {
-            trcl.add('redirect');
-            td.textContent = '<<';
-        }
-    }
-
-    if ( details.tabHostname ) {
-        tr.setAttribute('data-tabhn', details.tabHostname);
-    }
-    if ( details.docHostname ) {
-        tr.setAttribute('data-dochn', details.docHostname);
-        tr.cells[3].textContent = details.docHostname;
-    }
-
-    // Partyness
-    if ( details.realm === 'net' && details.domain !== undefined ) {
-        td = tr.cells[4];
-        let text = '';
-        if ( details.tabDomain !== undefined ) {
-            text += details.domain === details.tabDomain ? '1' : '3';
-        } else {
-            text += '?';
-        }
-        if ( details.docDomain !== details.tabDomain ) {
-            text += ',';
-            if ( details.docDomain !== undefined ) {
-                text += details.domain === details.docDomain ? '1' : '3';
-            } else {
-                text += '?';
-            }
-        }
-        td.textContent = text;
-        let indent = '\t';
-        text = details.tabDomain;
-        if ( details.docDomain !== details.tabDomain ) {
-            text += ` \u21d2\n\t${details.docDomain}`;
-            indent = '\t\t';
-        }
-        text += ` \u21d2\n${indent}${details.domain}`;
-        td.setAttribute('data-parties', text);
-    }
-
-    tr.cells[5].textContent = (prettyRequestTypes[type] || type);
-
-    let re = null;
-    if ( filteringType === 'static' ) {
-        re = new RegExp(filter.regex, 'gi');
-    } else if ( filteringType === 'dynamicUrl' ) {
-        re = regexFromURLFilteringResult(filter.rule.join(' '));
-    }
-    tr.cells[6].appendChild(nodeFromURL(url, re));
-};
-*/
-/******************************************************************************/
-/*
-var renderLogEntry = function(details) {
-    const fvdc = firstVarDataCol;
-    let tr;
-
-    if ( details.error !== undefined ) {
-        tr = createRow('1');
-        tr.cells[fvdc].textContent = details.error;
-    } else if ( details.url !== undefined ) {
-        tr = createRow('111111');
-        renderNetLogEntry(tr, details);
-    } else {
-        tr = createRow('1');
-        tr.cells[fvdc].textContent = '???';
-    }
-
-    // Fields common to all rows.
-    const time = logDate;
-    time.setTime(details.tstamp - logDateTimezoneOffset);
-    tr.cells[0].textContent = padTo2(time.getUTCHours()) + ':' +
-                              padTo2(time.getUTCMinutes()) + ':' +
-                              padTo2(time.getSeconds());
-
-    if ( details.tabId ) {
-        tr.setAttribute('data-tabid', details.tabId);
-        tr.classList.add(classNameFromTabId(details.tabId));
-    }
-
-    rowFilterer.filterOne(tr, true);
-    tbody.insertBefore(tr, tbody.firstChild);
-    return tr;
-};
-*/
-// Reuse date objects.
-const logDate = new Date();
-const logDateTimezoneOffset = logDate.getTimezoneOffset() * 60000;
 
 /******************************************************************************/
 
 const renderLogEntries = function(response) {
-    document.body.classList.toggle('colorBlind', response.colorBlind === true);
-
     const entries = response.entries;
     if ( entries.length === 0 ) { return; }
 
+    const autoDeleteVoidedRows = uDom.nodeFromId('pageSelector').value === '_';
     const previousCount = filteredLoggerEntries.length;
+
     for ( const entry of entries ) {
-        const unboxed = parseLogEntry(JSON.parse(entry));
-        if ( unboxed.type === 'main_frame' ) {
-            const separator = createLogSeparator(unboxed, unboxed.url);
+        let unboxed = JSON.parse(entry);
+        let parsed = parseLogEntry(unboxed);
+        if (
+            parsed.tabId !== undefined &&
+            allTabIds.has(parsed.tabId) === false
+        ) {
+            if ( autoDeleteVoidedRows ) { continue; }
+            parsed.voided = true;
+        }
+        if ( parsed.type === 'main_frame' && parsed.voided === undefined ) {
+            const separator = createLogSeparator(parsed, unboxed.url);
             loggerEntries.unshift(separator);
             if ( rowFilterer.filterOne(separator) ) {
                 filteredLoggerEntries.unshift(separator);
+                if ( separator.voided !== undefined ) {
+                    filteredLoggerEntryVoidedCount += 1;
+                }
             }
         }
-        loggerEntries.unshift(unboxed);
-        if ( rowFilterer.filterOne(unboxed) ) {
-            filteredLoggerEntries.unshift(unboxed);
+        loggerEntries.unshift(parsed);
+        if ( rowFilterer.filterOne(parsed) ) {
+            filteredLoggerEntries.unshift(parsed);
+            if ( parsed.voided !== undefined ) {
+                filteredLoggerEntryVoidedCount += 1;
+            }
         }
-        // https://github.com/gorhill/uBlock/issues/1613#issuecomment-217637122
-        // Unlikely, but it may happen: mark as void if associated tab no
-        // longer exist.
-        //if ( details.tabId && allTabIds.has(details.tabId) === false ) {
-        //    tr.classList.add('void');
-        //}
     }
 
+    // TODO: fix
     // Prevent logger from growing infinitely and eating all memory. For
     // instance someone could forget that it is left opened for some
     // dynamically refreshed pages.
     //truncateLog(maxEntries);
+
     const addedCount = filteredLoggerEntries.length - previousCount;
     if ( addedCount !== 0 ) {
         viewPort.update(addedCount);
@@ -402,75 +231,98 @@ const renderLogEntries = function(response) {
 /******************************************************************************/
 
 const parseLogEntry = function(details) {
-    const entry = Object.assign({ fields: '' }, details);
-    const fields = [ '', '', '', '', '', '', '', '' ];
+    const toImport = [
+        'docDomain',
+        'docHostname',
+        'domain',
+        'filter',
+        'realm',
+        'tabId',
+        'tstamp',
+        'type',
+        'tabDomain',
+        'tabHostname',
+    ];
+    const entry = {
+        textContent: '',
+    };
+    for ( const prop of toImport ) {
+        if ( details[prop] === undefined ) { continue; }
+        entry[prop] = details[prop];
+    }
 
-    // 0
+    // Assemble the text content, i.e. the pre-built string which will be
+    // used to match logger output filtering expressions.
+    const textContent = [];
+
+    // Cell 0
     logDate.setTime(details.tstamp - logDateTimezoneOffset);
-    fields[0] =
+    textContent.push(
         padTo2(logDate.getUTCHours()) + ':' +
         padTo2(logDate.getUTCMinutes()) + ':' +
-        padTo2(logDate.getSeconds());
+        padTo2(logDate.getSeconds())
+    );
 
-    // 1
-    if ( details.error !== undefined ) {
-        fields[1] = details.error;
-        entry.fields = fields.join('\t');
+    // Cell 1
+    if ( details.realm === 'message' ) {
+        textContent.push(details.text);
+        entry.textContent = textContent.join('\t');
         return entry;
     }
 
-    // 1, 2
-    if ( details.filter !== undefined ) {
-        fields[1] = details.filter.raw || '';
-        if ( details.filter.result === 1 ) {
-            fields[2] = '--';
-        } else if ( details.filter.result === 2 ) {
-            fields[2] = '++';
-        } else if ( details.filter.result === 3 ) {
-            fields[2] = '**';
-        } else if ( details.filter.source === 'redirect' ) {
-            fields[2] = '<<';
-        }
-    } else {
-        fields[1] = fields[2] = '';
-    }
-
-    // 3
-    if ( details.tabHostname ) {
-        entry.tabHostname = details.tabHostname;
-    }
-    if ( details.docHostname ) {
-        entry.docHostname = fields[3] = details.docHostname || '';
-    } else {
-        fields[3] = '';
-    }
-
-    // 4
-    if ( details.realm === 'network' && details.domain !== undefined ) {
-        if ( details.tabDomain !== undefined ) {
-            fields[4] += details.domain === details.tabDomain ? '1' : '3';
+    // Cell 1, 2
+    if ( entry.filter !== undefined ) {
+        textContent.push(entry.filter.raw);
+        if ( entry.filter.result === 1 ) {
+            textContent.push('--');
+        } else if ( entry.filter.result === 2 ) {
+            textContent.push('++');
+        } else if ( entry.filter.result === 3 ) {
+            textContent.push('**');
+        } else if ( entry.filter.source === 'redirect' ) {
+            textContent.push('<<');
         } else {
-            fields[4] += '?';
+            textContent.push('');
         }
-        if ( details.docDomain !== details.tabDomain ) {
-            fields[4] += ',';
-            if ( details.docDomain !== undefined ) {
-                fields[4] += details.domain === details.docDomain ? '1' : '3';
+    } else {
+        textContent.push('', '');
+    }
+
+    // Cell 3
+    textContent.push(normalizeToStr(entry.docHostname));
+
+    // Cell 4
+    if (
+        entry.realm === 'network' &&
+        typeof entry.domain === 'string' &&
+        entry.domain !== ''
+    ) {
+        let partyness = '';
+        if ( entry.tabDomain !== undefined ) {
+            partyness += entry.domain === entry.tabDomain ? '1' : '3';
+        } else {
+            partyness += '?';
+        }
+        if ( entry.docDomain !== entry.tabDomain ) {
+            partyness += ',';
+            if ( entry.docDomain !== undefined ) {
+                partyness += entry.domain === entry.docDomain ? '1' : '3';
             } else {
-                fields[4] += '?';
+                partyness += '?';
             }
         }
+        textContent.push(partyness);
     } else {
-        fields[4] = '';
+        textContent.push('');
     }
 
-    // 5
-    fields[5] = prettyRequestTypes[details.type] || details.type;
+    // Cell 5
+    textContent.push(normalizeToStr(prettyRequestTypes[entry.type] || entry.type));
 
-    // 6
-    fields[6] = details.url || '';
+    // Cell 6
+    textContent.push(normalizeToStr(details.url));
 
-    entry.fields = fields.join('\t');
+    entry.textContent = textContent.join('\t');
     return entry;
 };
 
@@ -603,12 +455,11 @@ const viewPort = (function() {
 
         vwEntry.logEntry = details;
 
-        // Trying to reuse existing elements systematically cause layout
-        // trashing, *even* if the div is recycled from a previous call to
-        // replaceChild().
+        const cells = details.textContent.split('\t');
         const div = document.createElement('div');
         const divcl = div.classList;
-        let span, text;
+        let span;
+
 
         // Realm
         if ( details.realm !== undefined ) {
@@ -616,17 +467,16 @@ const viewPort = (function() {
         }
 
         // Timestamp
-        logDate.setTime(details.tstamp - logDateTimezoneOffset);
         span = document.createElement('span');
-        span.textContent =
-            padTo2(logDate.getUTCHours()) + ':' +
-            padTo2(logDate.getUTCMinutes()) + ':' +
-            padTo2(logDate.getSeconds());
+        span.textContent = cells[0];
         div.appendChild(span);
 
         // Tab id
         if ( details.tabId !== undefined ) {
             div.setAttribute('data-tabid', details.tabId);
+            if ( details.voided !== undefined ) {
+                divcl.add('voided');
+            }
         }
 
         if ( details.realm === 'message' ) {
@@ -634,13 +484,12 @@ const viewPort = (function() {
                 div.setAttribute('data-type', details.type);
             }
             span = document.createElement('span');
-            span.textContent = details.text;
+            span.textContent = cells[1];
             div.appendChild(span);
             return div;
         }
 
         // Filter
-        span = document.createElement('span');
         const filter = details.filter || undefined;
         let filteringType;
         if ( filter !== undefined ) {
@@ -648,69 +497,47 @@ const viewPort = (function() {
                 filteringType = filter.source;
                 divcl.add(filteringType);
             }
-        }
-        if ( filter !== undefined ) {
             if ( filteringType === 'static' ) {
                 divcl.add('canLookup');
                 div.setAttribute('data-filter', filter.compiled);
             } else if ( filteringType === 'cosmetic' ) {
                 divcl.add('canLookup');
             }
-            span.textContent = filter.raw;
         }
+        span = document.createElement('span');
+        span.textContent = cells[1];
         div.appendChild(span);
 
         // Event
-        span = document.createElement('span');
-        if ( filter !== undefined ) {
-            if ( filter.result === 1 ) {
-                divcl.add('blocked');
-                text = '--';
-            } else if ( filter.result === 2 ) {
-                divcl.add('allowed');
-                text = '++';
-            } else if ( filter.result === 3 ) {
-                span.add('nooped');
-                text = '**';
-            } else if ( filteringType === 'redirect' ) {
-                divcl.add('redirect');
-                text = '<<';
-            }
-            span.textContent = text;
+        if ( cells[2] === '--' ) {
+            divcl.add('blocked');
+        } else if ( cells[2] === '++' ) {
+            divcl.add('allowed');
+        } else if ( cells[2] === '**' ) {
+            span.add('nooped');
+        } else if ( cells[2] === '<<' ) {
+            divcl.add('redirect');
         }
+        span = document.createElement('span');
+        span.textContent = cells[2];
         div.appendChild(span);
 
         // Origin
-        span = document.createElement('span');
         if ( details.tabHostname ) {
             div.setAttribute('data-tabhn', details.tabHostname);
         }
         if ( details.docHostname ) {
             div.setAttribute('data-dochn', details.docHostname);
-            span.textContent = details.docHostname;
         }
+        span = document.createElement('span');
+        span.textContent = cells[3];
         div.appendChild(span);
 
         // Partyness
         span = document.createElement('span');
         if ( details.realm === 'network' && details.domain !== undefined ) {
-            text = '';
-            if ( details.tabDomain !== undefined ) {
-                text += details.domain === details.tabDomain ? '1' : '3';
-            } else {
-                text += '?';
-            }
-            if ( details.docDomain !== details.tabDomain ) {
-                text += ',';
-                if ( details.docDomain !== undefined ) {
-                    text += details.domain === details.docDomain ? '1' : '3';
-                } else {
-                    text += '?';
-                }
-            }
-            span.textContent = text;
             let indent = '\t';
-            text = details.tabDomain;
+            let text = details.tabDomain;
             if ( details.docDomain !== details.tabDomain ) {
                 text += ` \u21d2\n\t${details.docDomain}`;
                 indent = '\t\t';
@@ -718,22 +545,23 @@ const viewPort = (function() {
             text += ` \u21d2\n${indent}${details.domain}`;
             span.setAttribute('data-parties', text);
         }
+        span.textContent = cells[4];
         div.appendChild(span);
 
         // Type
         span = document.createElement('span');
-        span.textContent = prettyRequestTypes[details.type] || details.type;
+        span.textContent = cells[5];
         div.appendChild(span);
 
         // URL
-        span = document.createElement('span');
         let re = null;
         if ( filteringType === 'static' ) {
             re = new RegExp(filter.regex, 'gi');
         } else if ( filteringType === 'dynamicUrl' ) {
             re = regexFromURLFilteringResult(filter.rule.join(' '));
         }
-        span.appendChild(nodeFromURL(details.url, re));
+        span = document.createElement('span');
+        span.appendChild(nodeFromURL(cells[6], re));
         div.appendChild(span);
 
         return div;
@@ -774,7 +602,8 @@ const viewPort = (function() {
                 if ( oldDiv === null ) {
                     container.appendChild(newDiv);
                 } else if ( newDiv !== oldDiv ) {
-                    container.replaceChild(newDiv, oldDiv);
+                    container.removeChild(oldDiv);
+                    container.appendChild(newDiv);
                 }
             } else if ( oldDiv !== null ) {
                 container.removeChild(oldDiv);
@@ -854,24 +683,47 @@ let updateCurrentTabTitle = (function() {
 
 const synchronizeTabIds = function(newTabIds) {
     const select = uDom.nodeFromId('pageSelector');
-    const selectValue = select.value;
+    const selectedTabValue = select.value;
     const oldTabIds = allTabIds;
-    const autoDeleteVoidRows = selectValue === '_';
-    let rowVoided = false;
+
+    // Collate removed tab ids.
+    const toVoid = new Set();
     for ( const tabId of oldTabIds.keys() ) {
         if ( newTabIds.has(tabId) ) { continue; }
-        // Mark or remove voided rows
-        const trs = uDom('.tab_' + tabId);
-        if ( autoDeleteVoidRows ) {
-            toJunkyard(trs);
-        } else {
-            trs.addClass('void');
-            rowVoided = true;
+        toVoid.add(tabId);
+    }
+    allTabIds = newTabIds;
+
+    // Mark as "void" all logger entries which are linked to now invalid
+    // tab ids.
+    // When an entry is voided without being removed, we re-create a new entry
+    // in order to ensure the entry has a new identity. A new identify ensures
+    // that identity-based associations elsewhere are automatically
+    // invalidated.
+    if ( toVoid.size !== 0 ) {
+        const autoDeleteVoidedRows = selectedTabValue === '_';
+        const toKeep = [];
+        let rowVoided = false;
+        for ( let entry of loggerEntries ) {
+            if ( toVoid.has(entry.tabId) ) {
+                rowVoided = true;
+                if ( autoDeleteVoidedRows ) { continue; }
+                if ( entry.voided === undefined ) {
+                    entry = Object.assign({ voided: true }, entry);
+                }
+            }
+            toKeep.push(entry);
         }
-        // Remove popup if it is currently bound to a removed tab.
-        if ( tabId === popupManager.tabId ) {
-            popupManager.toggleOff();
+        loggerEntries = toKeep;
+        if ( rowVoided ) {
+            rowFilterer.filterAll();
+            viewPort.update(0);
         }
+    }
+
+    // Remove popup if it is currently bound to a removed tab.
+    if ( toVoid.has(popupManager.tabId) ) {
+        popupManager.toggleOff();
     }
 
     const tabIds = Array.from(newTabIds.keys()).sort(function(a, b) {
@@ -880,16 +732,15 @@ const synchronizeTabIds = function(newTabIds) {
     let j = 3;
     for ( let i = 0; i < tabIds.length; i++ ) {
         const tabId = tabIds[i];
-        if ( tabId < 0 ) { continue; }
-        let option = select.options[j];
-        if ( !option ) {
-            option = document.createElement('option');
-            select.appendChild(option);
+        if ( tabId <= 0 ) { continue; }
+        if ( j === select.options.length ) {
+            select.appendChild(document.createElement('option'));
         }
+        const option = select.options[j];
         // Truncate too long labels.
         option.textContent = newTabIds.get(tabId).slice(0, 80);
         option.setAttribute('value', tabId);
-        if ( option.value === selectValue ) {
+        if ( option.value === selectedTabValue ) {
             select.selectedIndex = j;
             option.setAttribute('selected', '');
         } else {
@@ -900,23 +751,20 @@ const synchronizeTabIds = function(newTabIds) {
     while ( j < select.options.length ) {
         select.removeChild(select.options[j]);
     }
-    if ( select.value !== selectValue ) {
+    if ( select.value !== selectedTabValue ) {
         select.selectedIndex = 0;
         select.value = '';
         select.options[0].setAttribute('selected', '');
         pageSelectorChanged();
     }
 
-    allTabIds = newTabIds;
-
     updateCurrentTabTitle();
-
-    return rowVoided;
 };
 
 /******************************************************************************/
 
-var truncateLog = function(size) {
+// TODO: fix
+const truncateLog = function(size) {
     if ( size === 0 ) {
         size = 5000;
     }
@@ -962,10 +810,9 @@ const onLogBufferRead = function(response) {
         response.tabIds = new Map(response.tabIds);
     }
 
-    // Neuter rows for which a tab does not exist anymore
-    let rowVoided = false;
+    // List of tab ids has changed
     if ( response.tabIds !== undefined ) {
-        rowVoided = synchronizeTabIds(response.tabIds);
+        synchronizeTabIds(response.tabIds);
         allTabIdsToken = response.tabIdsToken;
     }
 
@@ -977,17 +824,18 @@ const onLogBufferRead = function(response) {
         renderLogEntries(response);
     }
 
-    if ( rowVoided ) {
-        uDom('#clean').toggleClass(
-            'disabled',
-            tbody.querySelector('#netInspector tr[data-tabid].void') === null
-        );
-    }
-
-    // Synchronize toolbar with content of log
-    uDom('#clear').toggleClass(
+    // Synchronize DOM with sent logger data
+    document.body.classList.toggle(
+        'colorBlind',
+        response.colorBlind === true
+    );
+    uDom.nodeFromId('clean').classList.toggle(
         'disabled',
-        tbody.querySelector('tr') === null
+        filteredLoggerEntryVoidedCount === 0
+    );
+    uDom.nodeFromId('clear').classList.toggle(
+        'disabled',
+        filteredLoggerEntries.length === 0
     );
 };
 
@@ -1043,13 +891,13 @@ const readLogBuffer = (function() {
  
 /******************************************************************************/
 
-let pageSelectorChanged = function() {
+const pageSelectorChanged = function() {
     const select = uDom.nodeFromId('pageSelector');
     window.location.replace('#' + select.value);
     pageSelectorFromURLHash();
 };
 
-let pageSelectorFromURLHash = (function() {
+const pageSelectorFromURLHash = (function() {
     let lastHash;
     let lastSelectedTabId;
 
@@ -1080,21 +928,29 @@ let pageSelectorFromURLHash = (function() {
             ? activeTabId
             : parseInt(hash, 10) || 0;
 
-        if ( lastSelectedTabId !== selectedTabId ) {
-            rowFilterer.filterAll();
-            document.dispatchEvent(new Event('tabIdChanged'));
-            updateCurrentTabTitle();
-            uDom('.needdom').toggleClass('disabled', selectedTabId <= 0);
-            uDom('.needscope').toggleClass('disabled', selectedTabId <= 0);
-            lastSelectedTabId = selectedTabId;
-        }
+        if ( lastSelectedTabId === selectedTabId ) { return; }
+
+        rowFilterer.filterAll();
+        document.dispatchEvent(new Event('tabIdChanged'));
+        updateCurrentTabTitle();
+        uDom('.needdom').toggleClass('disabled', selectedTabId <= 0);
+        uDom('.needscope').toggleClass('disabled', selectedTabId <= 0);
+        uDom.nodeFromId('clean').classList.toggle(
+            'disabled',
+            filteredLoggerEntryVoidedCount === 0
+        );
+        uDom.nodeFromId('clear').classList.toggle(
+            'disabled',
+            filteredLoggerEntries.length === 0
+        );
+        lastSelectedTabId = selectedTabId;
     };
 })();
 
 /******************************************************************************/
 
-var reloadTab = function(ev) {
-    var tabId = tabIdFromPageSelector();
+const reloadTab = function(ev) {
+    const tabId = tabIdFromPageSelector();
     if ( tabId <= 0 ) { return; }
     messaging.send('loggerUI', {
         what: 'reloadTab',
@@ -1105,8 +961,9 @@ var reloadTab = function(ev) {
 
 /******************************************************************************/
 
-var onMaxEntriesChanged = function() {
-    var input = this;
+// TODO: fix
+const onMaxEntriesChanged = function() {
+    const input = uDom.nodeFromId('maxEntries');
     try {
         maxEntries = parseInt(input.value, 10);
         if ( maxEntries === 0 || isNaN(maxEntries) ) {
@@ -1136,7 +993,7 @@ var onMaxEntriesChanged = function() {
 /******************************************************************************/
 /******************************************************************************/
 
-var netFilteringManager = (function() {
+const netFilteringManager = (function() {
     var targetRow = null;
     var dialog = null;
     var createdStaticFilters = {};
@@ -1703,18 +1560,18 @@ var netFilteringManager = (function() {
 /******************************************************************************/
 /******************************************************************************/
 
-var reverseLookupManager = (function() {
-    let filterFinderDialog = uDom.nodeFromId('filterFinderDialog');
+const reverseLookupManager = (function() {
+    const filterFinderDialog = uDom.nodeFromId('filterFinderDialog');
     let rawFilter = '';
 
-    let removeAllChildren = function(node) {
+    const removeAllChildren = function(node) {
         while ( node.firstChild ) {
             node.removeChild(node.firstChild);
         }
     };
 
     // Clicking outside the dialog will close the dialog
-    let onClick = function(ev) {
+    const onClick = function(ev) {
         if ( ev.target.classList.contains('modalDialog') ) {
             toggleOff();
             return;
@@ -1723,12 +1580,10 @@ var reverseLookupManager = (function() {
         ev.stopPropagation();
     };
 
-    let nodeFromFilter = function(filter, lists) {
-        if ( Array.isArray(lists) === false || lists.length === 0 ) {
-            return;
-        }
+    const nodeFromFilter = function(filter, lists) {
+        if ( Array.isArray(lists) === false || lists.length === 0 ) { return; }
 
-        let p = document.createElement('p');
+        const p = document.createElement('p');
 
         vAPI.i18n.safeTemplateToDOM(
             'loggerStaticFilteringFinderSentence1',
@@ -1736,10 +1591,10 @@ var reverseLookupManager = (function() {
             p
         );
 
-        let ul = document.createElement('ul');
-        for ( let list of lists ) {
-            let li = document.querySelector('#filterFinderListEntry > li')
-                             .cloneNode(true);
+        const ul = document.createElement('ul');
+        for ( const list of lists ) {
+            const li = document.querySelector('#filterFinderListEntry > li')
+                               .cloneNode(true);
             let a = li.querySelector('a:nth-of-type(1)');
             a.href += encodeURIComponent(list.assetKey);
             a.textContent = list.title;
@@ -1754,15 +1609,15 @@ var reverseLookupManager = (function() {
         return p;
     };
 
-    let reverseLookupDone = function(response) {
+    const reverseLookupDone = function(response) {
         if ( response instanceof Object === false ) {
             response = {};
         }
 
-        let dialog = filterFinderDialog.querySelector('.dialog');
+        const dialog = filterFinderDialog.querySelector('.dialog');
         removeAllChildren(dialog);
 
-        for ( let filter in response ) {
+        for ( const filter in response ) {
             let p = nodeFromFilter(filter, response[filter]);
             if ( p === undefined ) { continue; }
             dialog.appendChild(p);
@@ -1782,7 +1637,7 @@ var reverseLookupManager = (function() {
     };
 
     const toggleOn = function(ev) {
-        const row = ev.target.closest('[data-filter]');
+        const row = ev.target.closest('.canLookup');
         if ( row === null ) { return; }
         rawFilter = row.children[1].textContent;
         if ( rawFilter === '' ) { return; }
@@ -1809,7 +1664,7 @@ var reverseLookupManager = (function() {
         }
     };
 
-    let toggleOff = function() {
+    const toggleOff = function() {
         filterFinderDialog.removeEventListener('click', onClick, true);
         document.body.removeChild(filterFinderDialog);
         rawFilter = '';
@@ -1826,6 +1681,7 @@ var reverseLookupManager = (function() {
 const rowFilterer = (function() {
     const userFilters = [];
     const builtinFilters = [];
+
     let masterFilterSwitch = true;
     let filters = [];
 
@@ -1896,7 +1752,6 @@ const rowFilterer = (function() {
     };
 
     const filterOne = function(logEntry) {
-        // TODO: Tab id filtering
         if (
             selectedTabId !== 0 &&
             logEntry.tabId !== undefined &&
@@ -1910,21 +1765,25 @@ const rowFilterer = (function() {
             return true;
         }
 
-        // do not filter out doc boundaries, they help separate key sections
+        // Do not filter out doc boundaries, they help separate key sections
         // of logger.
         if ( logEntry.type === 'separator' ) { return true; }
 
         for ( const f of filters ) {
-            if ( f.re.test(logEntry.fields) !== f.r ) { return false; }
+            if ( f.re.test(logEntry.textContent) !== f.r ) { return false; }
         }
         return true;
     };
 
     const filterAll = function() {
         filteredLoggerEntries = [];
+        filteredLoggerEntryVoidedCount = 0;
         for ( const entry of loggerEntries ) {
             if ( filterOne(entry) === false ) { continue; }
             filteredLoggerEntries.push(entry);
+            if ( entry.voided !== undefined ) {
+                filteredLoggerEntryVoidedCount += 1;
+            }
         }
         viewPort.update(0);
         uDom.nodeFromId('filterButton').classList.toggle(
@@ -2013,51 +1872,75 @@ const rowFilterer = (function() {
 
 /******************************************************************************/
 
-const toJunkyard = function(trs) {
-    trs.remove();
-    var i = trs.length;
-    while ( i-- ) {
-        trJunkyard.push(trs.nodeAt(i));
-    }
-};
+// Clear the logger's visible content.
+//
+// "Unrelated" entries -- shown for convenience -- will be also cleared
+// if and only if the filtered logger content is made entirely of unrelated
+// entries. In effect, this means clicking a second time on the eraser will
+// cause unrelated entries to also be cleared.
 
-/******************************************************************************/
-
-var clearBuffer = function() {
-    var tabClass = uDom.nodeFromId('pageSelector').value;
-    var btsAlso = tabClass === '' || tabClass === 'tab_bts';
-    var tbody = document.querySelector('#netInspector tbody');
-    var tr = tbody.lastElementChild;
-    var trPrevious;
-    while ( tr !== null ) {
-        trPrevious = tr.previousElementSibling;
-        if (
-            (tr.clientHeight > 0) &&
-            (tr.classList.contains('tab_bts') === false || btsAlso)
-        ) {
-            trJunkyard.push(tbody.removeChild(tr));
+const clearBuffer = function() {
+    let clearUnrelated = true;
+    if ( selectedTabId !== 0 ) {
+        for ( const entry of filteredLoggerEntries ) {
+            if ( entry.tabId === selectedTabId ) {
+                clearUnrelated = false;
+                break;
+            }
         }
-        tr = trPrevious;
     }
-    uDom.nodeFromId('clear').classList.toggle(
-        'disabled',
-        tbody.childElementCount === 0
-    );
+
+    const toRemove = new Set(filteredLoggerEntries);
+    const toKeep = [];
+    for ( const entry of loggerEntries ) {
+        if (
+            toRemove.has(entry) === false ||
+            entry.tabId !== selectedTabId && clearUnrelated === false
+        ) {
+            toKeep.push(entry);
+        }
+    }
+    loggerEntries = toKeep;
+    rowFilterer.filterAll();
+    viewPort.update(0);
+
     uDom.nodeFromId('clean').classList.toggle(
         'disabled',
-        tbody.querySelector('#netInspector tr[data-tabid].void') === null
+        filteredLoggerEntryVoidedCount === 0
+    );
+    uDom.nodeFromId('clear').classList.toggle(
+        'disabled',
+        filteredLoggerEntries.length === 0
     );
 };
 
 /******************************************************************************/
 
-var cleanBuffer = function() {
-    var rows = uDom('#netInspector tr[data-tabid].void').remove();
-    var i = rows.length;
-    while ( i-- ) {
-        trJunkyard.push(rows.nodeAt(i));
+// Clear voided entries from the logger's visible content.
+//
+// Voided entries should be visible only from the "All" option of the
+// tab selector.
+
+const cleanBuffer = function() {
+    const toRemove = new Set(filteredLoggerEntries);
+    const toKeep = [];
+    for ( const entry of loggerEntries ) {
+        if ( entry.voided === undefined || toRemove.has(entry) === false ) {
+            toKeep.push(entry);
+        }
     }
-    uDom('#clean').addClass('disabled');
+    loggerEntries = toKeep;
+    rowFilterer.filterAll();
+    viewPort.update(0);
+
+    uDom.nodeFromId('clean').classList.toggle(
+        'disabled',
+        filteredLoggerEntryVoidedCount === 0
+    );
+    uDom.nodeFromId('clear').classList.toggle(
+        'disabled',
+        filteredLoggerEntries.length === 0
+    );
 };
 
 /******************************************************************************/
@@ -2070,11 +1953,13 @@ const pauseNetInspector = function() {
 
 /******************************************************************************/
 
+// TODO: fix
 const toggleVCompactView = function() {
     uDom.nodeFromId('netInspector').classList.toggle('vCompact');
     uDom('#netInspector .vExpanded').toggleClass('vExpanded');
 };
 
+// TODO: fix
 const toggleVCompactRow = function(ev) {
     ev.target.parentElement.classList.toggle('vExpanded');
 };
@@ -2229,8 +2114,10 @@ uDom('#pageSelector').on('change', pageSelectorChanged);
 uDom('#refresh').on('click', reloadTab);
 
 uDom('#netInspector .vCompactToggler').on('click', toggleVCompactView);
-uDom('#clean').on('click', cleanBuffer);
-uDom('#clear').on('click', clearBuffer);
+
+uDom.nodeFromId('clean').addEventListener('click', cleanBuffer);
+uDom.nodeFromId('clear').addEventListener('click', clearBuffer);
+
 uDom('#pause').on('click', pauseNetInspector);
 uDom('#maxEntries').on('change', onMaxEntriesChanged);
 uDom('#netInspector table').on('click', 'tr > td:nth-of-type(1)', toggleVCompactRow);
