@@ -1178,13 +1178,14 @@ const netFilteringManager = (function() {
             }
             createdStaticFilters[value] = true;
             if ( value !== '' ) {
-                var d = new Date();
                 messaging.send(
                     'loggerUI',
                     {
                         what: 'createUserFilter',
+                        autoComment: true,
+                        filters: value,
+                        origin: targetPageDomain,
                         pageDomain: targetPageDomain,
-                        filters: '! ' + d.toLocaleString() + ' ' + targetPageDomain + '\n' + value
                     }
                 );
             }
