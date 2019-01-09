@@ -34,6 +34,18 @@ const logger = self.logger = { ownerId: Date.now() };
 const logDate = new Date();
 const logDateTimezoneOffset = logDate.getTimezoneOffset() * 60000;
 
+// TODO:
+// - UI to customize these settings
+// - Give some thoughts to:
+//   - an option to discard immediately filtered out new entries
+//   - max entry count _per load_
+//
+const discardOptions = {
+    maxAge: 24 * 60 * 60 * 1000,    // global
+    maxEntryCount: 2000,            // per-tab
+    maxLoadCount: 20,               // per-tab
+};
+
 let loggerEntries = [];
 let filteredLoggerEntries = [];
 let filteredLoggerEntryVoidedCount = 0;
@@ -46,13 +58,16 @@ let netInspectorPaused = false;
 
 /******************************************************************************/
 
-const removeAllChildren = logger.removeAllChildren = function(node) {
-    while ( node.firstChild ) {
-        node.removeChild(node.firstChild);
-    }
-};
+// Various helpers.
 
-/******************************************************************************/
+// https://developer.mozilla.org/en-US/docs/Web/API/Window/requestIdleCallback#Browser_compatibility
+const requestIdleCallback =
+    self.requestIdleCallback ||
+    function(fn) {
+        self.setTimeout(( ) => {
+            fn({ timeRemaining: ( ) => 10 });
+        }, 50);
+    };
 
 const tabIdFromClassName = function(className) {
     const matches = className.match(/\btab_([^ ]+)\b/);
@@ -69,8 +84,58 @@ const tabIdFromPageSelector = logger.tabIdFromPageSelector = function() {
 /******************************************************************************/
 /******************************************************************************/
 
+// Current design allows for only one modal DOM-based dialog at any given time.
+//
+const modalDialog = (function() {
+    const overlay = uDom.nodeFromId('modalOverlay');
+    const container = overlay.querySelector(
+        ':scope > div > div:nth-of-type(1)'
+    );
+    let onDestroyed;
+
+    const removeChildren = logger.removeAllChildren = function(node) {
+        while ( node.firstChild ) {
+            node.removeChild(node.firstChild);
+        }
+    };
+
+    const create = function(selector, destroyListener) {
+        const template = document.querySelector(selector);
+        const dialog = template.cloneNode(true);
+        removeChildren(container);
+        container.appendChild(dialog);
+        onDestroyed = destroyListener;
+        return dialog;
+    };
+
+    const show = function() {
+        overlay.classList.add('on');
+    };
+
+    const destroy = function() {
+        overlay.classList.remove('on');
+        removeChildren(container);
+        if ( typeof onDestroyed === 'function' ) {
+            onDestroyed();
+        }
+        onDestroyed = undefined;
+    };
+
+    overlay.addEventListener('click', destroy);
+    overlay.querySelector(
+        ':scope > div > div:nth-of-type(2)'
+    ).addEventListener(
+        'click',
+        destroy
+    );
+
+    return { create, show, destroy };
+})();
+
+/******************************************************************************/
+/******************************************************************************/
+
 const reRFC3986 = /^([^:\/?#]+:)?(\/\/[^\/?#]*)?([^?#]*)(\?[^#]*)?(#.*)?/;
-const netFilteringDialog = uDom.nodeFromId('netFilteringDialog');
 
 const prettyRequestTypes = {
     'main_frame': 'doc',
@@ -146,14 +211,43 @@ const normalizeToStr = function(s) {
 
 /******************************************************************************/
 
+const LogEntry = function(details) {
+    if ( details instanceof Object === false ) { return; }
+    const receiver = LogEntry.prototype;
+    for ( const prop in receiver ) {
+        if (
+            receiver.hasOwnProperty(prop) &&
+            details[prop] !== receiver[prop]
+        ) {
+            this[prop] = details[prop];
+        }
+    }
+};
+LogEntry.prototype = {
+    dead: false,
+    docDomain: '',
+    docHostname: '',
+    domain: '',
+    filter: undefined,
+    realm: '',
+    tabDomain: '',
+    tabHostname: '',
+    tabId: undefined,
+    textContent: '',
+    tstamp: 0,
+    type: '',
+    voided: false,
+};
+
+/******************************************************************************/
+
 const createLogSeparator = function(details, text) {
-    const separator = parseLogEntry({
-        tstamp: details.tstamp,
-        realm: 'message',
-        tabId: details.tabId,
-        type: 'separator',
-        textContent: '',
-    });
+    const separator = new LogEntry();
+    separator.tstamp = details.tstamp;
+    separator.realm = 'message';
+    separator.tabId = details.tabId;
+    separator.type = 'tabLoad';
+    separator.textContent = '';
 
     const textContent = [];
     logDate.setTime(separator.tstamp - logDateTimezoneOffset);
@@ -167,7 +261,7 @@ const createLogSeparator = function(details, text) {
     );
     separator.textContent = textContent.join('\t');
 
-    if ( details.voided !== undefined ) {
+    if ( details.voided ) {
         separator.voided = true;
     }
 
@@ -176,7 +270,11 @@ const createLogSeparator = function(details, text) {
 
 /******************************************************************************/
 
-const renderLogEntries = function(response) {
+// TODO: once refactoring is mature, consider using push() instead of
+//       unshift(). This will require inverting the access logic
+//       throughout the code.
+//
+const processLoggerEntries = function(response) {
     const entries = response.entries;
     if ( entries.length === 0 ) { return; }
 
@@ -184,8 +282,8 @@ const renderLogEntries = function(response) {
     const previousCount = filteredLoggerEntries.length;
 
     for ( const entry of entries ) {
-        let unboxed = JSON.parse(entry);
-        let parsed = parseLogEntry(unboxed);
+        const unboxed = JSON.parse(entry);
+        const parsed = parseLogEntry(unboxed);
         if (
             parsed.tabId !== undefined &&
             allTabIds.has(parsed.tabId) === false
@@ -193,12 +291,12 @@ const renderLogEntries = function(response) {
             if ( autoDeleteVoidedRows ) { continue; }
             parsed.voided = true;
         }
-        if ( parsed.type === 'main_frame' && parsed.voided === undefined ) {
+        if ( parsed.type === 'main_frame' ) {
             const separator = createLogSeparator(parsed, unboxed.url);
             loggerEntries.unshift(separator);
             if ( rowFilterer.filterOne(separator) ) {
                 filteredLoggerEntries.unshift(separator);
-                if ( separator.voided !== undefined ) {
+                if ( separator.voided ) {
                     filteredLoggerEntryVoidedCount += 1;
                 }
             }
@@ -206,46 +304,23 @@ const renderLogEntries = function(response) {
         loggerEntries.unshift(parsed);
         if ( rowFilterer.filterOne(parsed) ) {
             filteredLoggerEntries.unshift(parsed);
-            if ( parsed.voided !== undefined ) {
+            if ( parsed.voided ) {
                 filteredLoggerEntryVoidedCount += 1;
             }
         }
     }
 
-    // TODO: fix
-    // Prevent logger from growing infinitely and eating all memory. For
-    // instance someone could forget that it is left opened for some
-    // dynamically refreshed pages.
-    //truncateLog(maxEntries);
-
     const addedCount = filteredLoggerEntries.length - previousCount;
     if ( addedCount !== 0 ) {
         viewPort.updateContent(addedCount);
+        rowJanitor.inserted(addedCount);
     }
 };
 
 /******************************************************************************/
 
 const parseLogEntry = function(details) {
-    const toImport = [
-        'docDomain',
-        'docHostname',
-        'domain',
-        'filter',
-        'realm',
-        'tabId',
-        'tstamp',
-        'type',
-        'tabDomain',
-        'tabHostname',
-    ];
-    const entry = {
-        textContent: '',
-    };
-    for ( const prop of toImport ) {
-        if ( details[prop] === undefined ) { continue; }
-        entry[prop] = details[prop];
-    }
+    const entry = new LogEntry(details);
 
     // Assemble the text content, i.e. the pre-built string which will be
     // used to match logger output filtering expressions.
@@ -514,7 +589,7 @@ const viewPort = (function() {
         // Tab id
         if ( details.tabId !== undefined ) {
             div.setAttribute('data-tabid', details.tabId);
-            if ( details.voided !== undefined ) {
+            if ( details.voided ) {
                 divcl.add('voided');
             }
         }
@@ -742,8 +817,9 @@ const synchronizeTabIds = function(newTabIds) {
             if ( toVoid.has(entry.tabId) ) {
                 rowVoided = true;
                 if ( autoDeleteVoidedRows ) { continue; }
-                if ( entry.voided === undefined ) {
-                    entry = Object.assign({ voided: true }, entry);
+                if ( entry.voided === false ) {
+                    entry = new LogEntry(entry);
+                    entry.voided = true;
                 }
             }
             toKeep.push(entry);
@@ -796,23 +872,6 @@ const synchronizeTabIds = function(newTabIds) {
 
 /******************************************************************************/
 
-// TODO: fix
-/*
-const truncateLog = function(size) {
-    if ( size === 0 ) {
-        size = 5000;
-    }
-    var tbody = document.querySelector('#netInspector tbody');
-    size = Math.min(size, 10000);
-    var tr;
-    while ( tbody.childElementCount > size ) {
-        tr = tbody.lastElementChild;
-        trJunkyard.push(tbody.removeChild(tr));
-    }
-};
-*/
-/******************************************************************************/
-
 const onLogBufferRead = function(response) {
     if ( !response || response.unavailable ) { return; }
 
@@ -855,7 +914,7 @@ const onLogBufferRead = function(response) {
     }
 
     if ( netInspectorPaused === false ) {
-        renderLogEntries(response);
+        processLoggerEntries(response);
     }
 
     // Synchronize DOM with sent logger data
@@ -969,14 +1028,6 @@ const pageSelectorFromURLHash = (function() {
         updateCurrentTabTitle();
         uDom('.needdom').toggleClass('disabled', selectedTabId <= 0);
         uDom('.needscope').toggleClass('disabled', selectedTabId <= 0);
-        uDom.nodeFromId('clean').classList.toggle(
-            'disabled',
-            filteredLoggerEntryVoidedCount === 0
-        );
-        uDom.nodeFromId('clear').classList.toggle(
-            'disabled',
-            filteredLoggerEntries.length === 0
-        );
         lastSelectedTabId = selectedTabId;
     };
 })();
@@ -1029,8 +1080,9 @@ const onMaxEntriesChanged = function() {
 /******************************************************************************/
 
 const netFilteringManager = (function() {
+    let dialog = null;
+
     var targetRow = null;
-    var dialog = null;
     var createdStaticFilters = {};
 
     var targetType;
@@ -1135,7 +1187,7 @@ const netFilteringManager = (function() {
     };
 
     const updateWidgets = function() {
-        var value = staticFilterNode().value;
+        const value = staticFilterNode().value;
         dialog.querySelector('#createStaticFilter').classList.toggle(
             'disabled',
             createdStaticFilters.hasOwnProperty(value) || value === ''
@@ -1144,12 +1196,6 @@ const netFilteringManager = (function() {
 
     const onClick = function(ev) {
         var target = ev.target;
-
-        // click outside the dialog proper
-        if ( target.classList.contains('modalDialog') ) {
-            toggleOff();
-            return;
-        }
 
         ev.stopPropagation();
 
@@ -1392,7 +1438,6 @@ const netFilteringManager = (function() {
         var select;
         // Fill context selector
         select = selectNode('select.dynamic.origin');
-        removeAllChildren(select);
         fillOriginSelect(select, targetPageHostname, targetPageDomain);
         var option = document.createElement('option');
         option.textContent = '*';
@@ -1535,7 +1580,6 @@ const netFilteringManager = (function() {
             nodes.push(document.createTextNode(template.slice(pos)));
         }
         var parent = dialog.querySelector('div.containers > div.static > p:first-of-type');
-        removeAllChildren(parent);
         for ( i = 0; i < nodes.length; i++ ) {
             parent.appendChild(nodes[i]);
         }
@@ -1543,21 +1587,27 @@ const netFilteringManager = (function() {
     };
 
     const fillDialog = function(domains) {
+        dialog = modalDialog.create(
+            '#netFilteringDialog',
+            ( ) => {
+                targetRow = null;
+                targetURLs = [];
+                dialog = null;
+            }
+        );
         targetDomain = domains[0];
         targetPageDomain = domains[1];
         targetFrameDomain = domains[2];
-
         createPreview(targetType, targetURLs[0]);
         fillDynamicPane();
         fillStaticPane();
-        document.body.appendChild(netFilteringDialog);
-        netFilteringDialog.addEventListener('click', onClick, true);
-        netFilteringDialog.addEventListener('change', onSelectChange, true);
-        netFilteringDialog.addEventListener('input', onInputChange, true);
+        dialog.addEventListener('click', onClick, true);
+        dialog.addEventListener('change', onSelectChange, true);
+        dialog.addEventListener('input', onInputChange, true);
+        modalDialog.show();
     };
 
     const toggleOn = function(ev) {
-        dialog = netFilteringDialog.querySelector('.dialog');
         targetRow = ev.target.closest('.networkRealm');
         targetTabId = tabIdFromClassName(targetRow.className);
         targetType = targetRow.children[5].textContent.trim() || '';
@@ -1576,18 +1626,6 @@ const netFilteringManager = (function() {
         );
     };
 
-    const toggleOff = function() {
-        removeAllChildren(dialog.querySelector('div.preview'));
-        removeAllChildren(dialog.querySelector('div.dynamic table.entries tbody'));
-        dialog = null;
-        targetRow = null;
-        targetURLs = [];
-        netFilteringDialog.removeEventListener('click', onClick, true);
-        netFilteringDialog.removeEventListener('change', onSelectChange, true);
-        netFilteringDialog.removeEventListener('input', onInputChange, true);
-        document.body.removeChild(netFilteringDialog);
-    };
-
     return { toggleOn };
 })();
 
@@ -1597,24 +1635,7 @@ const netFilteringManager = (function() {
 /******************************************************************************/
 
 const reverseLookupManager = (function() {
-    const filterFinderDialog = uDom.nodeFromId('filterFinderDialog');
     let rawFilter = '';
-
-    const removeAllChildren = function(node) {
-        while ( node.firstChild ) {
-            node.removeChild(node.firstChild);
-        }
-    };
-
-    // Clicking outside the dialog will close the dialog
-    const onClick = function(ev) {
-        if ( ev.target.classList.contains('modalDialog') ) {
-            toggleOff();
-            return;
-        }
-
-        ev.stopPropagation();
-    };
 
     const nodeFromFilter = function(filter, lists) {
         if ( Array.isArray(lists) === false || lists.length === 0 ) { return; }
@@ -1650,8 +1671,12 @@ const reverseLookupManager = (function() {
             response = {};
         }
 
-        const dialog = filterFinderDialog.querySelector('.dialog');
-        removeAllChildren(dialog);
+        const dialog = modalDialog.create(
+            '#filterFinderDialog',
+            ( ) => {
+                rawFilter = '';
+            }
+        );
 
         for ( const filter in response ) {
             let p = nodeFromFilter(filter, response[filter]);
@@ -1668,8 +1693,7 @@ const reverseLookupManager = (function() {
             );
         }
 
-        document.body.appendChild(filterFinderDialog);
-        filterFinderDialog.addEventListener('click', onClick, true);
+        modalDialog.show();
     };
 
     const toggleOn = function(ev) {
@@ -1698,12 +1722,6 @@ const reverseLookupManager = (function() {
                 reverseLookupDone
             );
         }
-    };
-
-    const toggleOff = function() {
-        filterFinderDialog.removeEventListener('click', onClick, true);
-        document.body.removeChild(filterFinderDialog);
-        rawFilter = '';
     };
 
     return {
@@ -1789,10 +1807,11 @@ const rowFilterer = (function() {
 
     const filterOne = function(logEntry) {
         if (
+            logEntry.dead ||
             selectedTabId !== 0 &&
-            logEntry.tabId !== undefined &&
-            logEntry.tabId > 0 &&
-            logEntry.tabId !== selectedTabId
+                logEntry.tabId !== undefined &&
+                logEntry.tabId > 0 &&
+                logEntry.tabId !== selectedTabId
         ) {
             return false;
         }
@@ -1801,9 +1820,9 @@ const rowFilterer = (function() {
             return true;
         }
 
-        // Do not filter out doc boundaries, they help separate key sections
+        // Do not filter out tab load event, they help separate key sections
         // of logger.
-        if ( logEntry.type === 'separator' ) { return true; }
+        if ( logEntry.type === 'tabLoad' ) { return true; }
 
         for ( const f of filters ) {
             if ( f.re.test(logEntry.textContent) !== f.r ) { return false; }
@@ -1817,7 +1836,7 @@ const rowFilterer = (function() {
         for ( const entry of loggerEntries ) {
             if ( filterOne(entry) === false ) { continue; }
             filteredLoggerEntries.push(entry);
-            if ( entry.voided !== undefined ) {
+            if ( entry.voided ) {
                 filteredLoggerEntryVoidedCount += 1;
             }
         }
@@ -1825,6 +1844,14 @@ const rowFilterer = (function() {
         uDom.nodeFromId('filterButton').classList.toggle(
             'active',
             filters.length !== 0
+        );
+        uDom.nodeFromId('clean').classList.toggle(
+            'disabled',
+            filteredLoggerEntryVoidedCount === 0
+        );
+        uDom.nodeFromId('clear').classList.toggle(
+            'disabled',
+            filteredLoggerEntries.length === 0
         );
     };
 
@@ -1908,74 +1935,200 @@ const rowFilterer = (function() {
 
 /******************************************************************************/
 
-// Clear the logger's visible content.
+// Discard logger entries to prevent undue memory usage growth. The criteria
+// to discard are multiple and user configurable:
 //
-// "Unrelated" entries -- shown for convenience -- will be also cleared
-// if and only if the filtered logger content is made entirely of unrelated
-// entries. In effect, this means clicking a second time on the eraser will
-// cause unrelated entries to also be cleared.
+// - Max number of page load per distinct tab
+// - Max number of entry per distinct tab
+// - Max entry age
 
-const clearBuffer = function() {
-    let clearUnrelated = true;
-    if ( selectedTabId !== 0 ) {
-        for ( const entry of filteredLoggerEntries ) {
-            if ( entry.tabId === selectedTabId ) {
-                clearUnrelated = false;
+const rowJanitor = (function() {
+    const tabIdToDiscard = new Set();
+    const tabIdToLoadCountMap = new Map();
+    const tabIdToEntryCountMap = new Map();
+
+    let rowIndex = 0;
+
+    const discard = function(timeRemaining) {
+        const maxLoadCount = typeof discardOptions.maxLoadCount === 'number'
+            ? discardOptions.maxLoadCount
+            : 0;
+        const maxEntryCount = typeof discardOptions.maxEntryCount === 'number'
+            ? discardOptions.maxEntryCount
+            : 0;
+        const obsolete = typeof discardOptions.maxAge === 'number'
+            ? Date.now() - discardOptions.maxAge
+            : 0;
+        const deadline = Date.now() + Math.ceil(timeRemaining);
+
+        let i = rowIndex;
+        // TODO: below should not happen -- remove when confirmed.
+        if ( i >= loggerEntries.length ) {
+            i = 0;
+        }
+
+        if ( i === 0 ) {
+            tabIdToDiscard.clear();
+            tabIdToLoadCountMap.clear();
+            tabIdToEntryCountMap.clear();
+        }
+
+        let idel = -1;
+        let bufferedTabId = 0;
+        let bufferedEntryCount = 0;
+        let modified = false;
+
+        while ( i < loggerEntries.length ) {
+
+            if ( i % 64 === 0 && Date.now() >= deadline ) { break; }
+
+            const entry = loggerEntries[i];
+            const tabId = entry.tabId || 0;
+
+            if ( entry.dead || tabIdToDiscard.has(tabId) ) {
+                if ( idel === -1 ) { idel = i; }
+                i += 1;
+                continue;
+            }
+
+            if ( maxLoadCount !== 0 && entry.type === 'tabLoad' ) {
+                let count = (tabIdToLoadCountMap.get(tabId) || 0) + 1;
+                tabIdToLoadCountMap.set(tabId, count);
+                if ( count >= maxLoadCount ) {
+                    tabIdToDiscard.add(tabId);
+                }
+            }
+
+            if ( maxEntryCount !== 0 ) {
+                if ( bufferedTabId !== tabId ) {
+                    if ( bufferedEntryCount !== 0 ) {
+                        tabIdToEntryCountMap.set(bufferedTabId, bufferedEntryCount);
+                    }
+                    bufferedTabId = tabId;
+                    bufferedEntryCount = tabIdToEntryCountMap.get(tabId) || 0;
+                }
+                bufferedEntryCount += 1;
+                if ( bufferedEntryCount >= maxEntryCount ) {
+                    tabIdToDiscard.add(bufferedTabId);
+                }
+            }
+
+            // Since entries in the logger are chronologically ordered,
+            // everything beyond obsolete is to be discarded.
+            if ( obsolete !== 0 && entry.tstamp <= obsolete ) {
+                if ( idel === -1 ) { idel = i; }
                 break;
             }
+
+            if ( idel !== -1 ) {
+                loggerEntries.copyWithin(idel, i);
+                loggerEntries.length -= i - idel;
+                idel = -1;
+                modified = true;
+            }
+
+            i += 1;
         }
-    }
 
-    const toRemove = new Set(filteredLoggerEntries);
-    const toKeep = [];
-    for ( const entry of loggerEntries ) {
-        if (
-            toRemove.has(entry) === false ||
-            entry.tabId !== selectedTabId && clearUnrelated === false
-        ) {
-            toKeep.push(entry);
+        if ( idel !== -1 ) {
+            loggerEntries.length = idel;
+            modified = true;
         }
-    }
-    loggerEntries = toKeep;
-    rowFilterer.filterAll();
 
-    uDom.nodeFromId('clean').classList.toggle(
-        'disabled',
-        filteredLoggerEntryVoidedCount === 0
-    );
-    uDom.nodeFromId('clear').classList.toggle(
-        'disabled',
-        filteredLoggerEntries.length === 0
-    );
-};
+        if ( i >= loggerEntries.length ) { i = 0; }
+        rowIndex = i;
 
-/******************************************************************************/
-
-// Clear voided entries from the logger's visible content.
-//
-// Voided entries should be visible only from the "All" option of the
-// tab selector.
-
-const cleanBuffer = function() {
-    const toRemove = new Set(filteredLoggerEntries);
-    const toKeep = [];
-    for ( const entry of loggerEntries ) {
-        if ( entry.voided === undefined || toRemove.has(entry) === false ) {
-            toKeep.push(entry);
+        if ( rowIndex === 0 ) {
+            tabIdToDiscard.clear();
+            tabIdToLoadCountMap.clear();
+            tabIdToEntryCountMap.clear();
         }
-    }
-    loggerEntries = toKeep;
-    rowFilterer.filterAll();
 
-    uDom.nodeFromId('clean').classList.toggle(
-        'disabled',
-        filteredLoggerEntryVoidedCount === 0
-    );
-    uDom.nodeFromId('clear').classList.toggle(
-        'disabled',
-        filteredLoggerEntries.length === 0
-    );
-};
+        if ( modified === false ) { return; }
+
+        rowFilterer.filterAll();
+    };
+
+    const discardAsync = function() {
+        setTimeout(
+            ( ) => {
+                requestIdleCallback(deadline => {
+                    discard(deadline.timeRemaining());
+                    discardAsync();
+                });
+            },
+            1889
+        );
+    };
+
+    // Clear voided entries from the logger's visible content.
+    //
+    // Voided entries should be visible only from the "All" option of the
+    // tab selector.
+    //
+    const clean = function() {
+        if ( filteredLoggerEntries.length === 0 ) { return; }
+
+        let j = 0;
+        let targetEntry = filteredLoggerEntries[0];
+        for ( const entry of loggerEntries ) {
+            if ( entry !== targetEntry ) { continue; }
+            if ( entry.voided ) {
+                entry.dead = true;
+            }
+            j += 1;
+            if ( j === filteredLoggerEntries.length ) { break; }
+            targetEntry = filteredLoggerEntries[j];
+        }
+        rowFilterer.filterAll();
+    };
+
+    // Clear the logger's visible content.
+    //
+    // "Unrelated" entries -- shown for convenience -- will be also cleared
+    // if and only if the filtered logger content is made entirely of unrelated
+    // entries. In effect, this means clicking a second time on the eraser will
+    // cause unrelated entries to also be cleared.
+    //
+    const clear = function() {
+        if ( filteredLoggerEntries.length === 0 ) { return; }
+
+        let clearUnrelated = true;
+        if ( selectedTabId !== 0 ) {
+            for ( const entry of filteredLoggerEntries ) {
+                if ( entry.tabId === selectedTabId ) {
+                    clearUnrelated = false;
+                    break;
+                }
+            }
+        }
+
+        let j = 0;
+        let targetEntry = filteredLoggerEntries[0];
+        for ( const entry of loggerEntries ) {
+            if ( entry !== targetEntry ) { continue; }
+            if ( entry.tabId === selectedTabId || clearUnrelated ) {
+                entry.dead = true;
+            }
+            j += 1;
+            if ( j === filteredLoggerEntries.length ) { break; }
+            targetEntry = filteredLoggerEntries[j];
+        }
+        rowFilterer.filterAll();
+    };
+
+    discardAsync();
+
+    return {
+        clean,
+        clear,
+        inserted: function(count) {
+            if ( rowIndex !== 0 ) {
+                rowIndex += count;
+            }
+        },
+    };
+})();
 
 /******************************************************************************/
 
@@ -1994,7 +2147,9 @@ const toggleVCompactView = function() {
     viewPort.updateLayout();
 };
 
-// TODO: fix
+// TODO: fix -- an overlay card showing all the details is the only way
+//       to go since variable row height is not an option. Probably merge
+//       all other overlays into a single tab button-driven one.
 const toggleVCompactRow = function(ev) {
     ev.target.parentElement.classList.toggle('vExpanded');
 };
@@ -2150,8 +2305,8 @@ uDom('#refresh').on('click', reloadTab);
 
 uDom('#netInspector .vCompactToggler').on('click', toggleVCompactView);
 
-uDom.nodeFromId('clean').addEventListener('click', cleanBuffer);
-uDom.nodeFromId('clear').addEventListener('click', clearBuffer);
+uDom.nodeFromId('clean').addEventListener('click', rowJanitor.clean);
+uDom.nodeFromId('clear').addEventListener('click', rowJanitor.clear);
 
 uDom('#pause').on('click', pauseNetInspector);
 //uDom('#maxEntries').on('change', onMaxEntriesChanged);

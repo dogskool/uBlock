@@ -72,54 +72,55 @@
                     <div class="logEntry oneLine"><div><span>00:00:00</span><span>&nbsp;</span><span>**</span><span>&nbsp;</span><span>3,3</span><span>inline-script</span><span>&nbsp;</span></div></div>
                 </div>
             </div>
-            <style id="tabFilterer"></style>
-            <table>
-                <colgroup><col><col><col><col><col><col></colgroup>
-                <tbody></tbody>
-            </table>
         </div>
     </div>
     <iframe id="popupContainer" class="hide"></iframe>
 </div>
 
+<div id="modalOverlay">
+    <div>
+        <div id="modalOverlayContainer"></div>
+        <div><svg viewBox="0 0 64 64"><path d="M 16 16 L 48 48 M 16 48 L 48 16" /></svg></div>
+    </div>
+</div>
+
 <div id="templates" style="display: none;">
     <div id="logEntryTemplate"><div><span></span>&#8203;<span></span>&#8203;<span></span>&#8203;<span></span>&#8203;<span></span>&#8203;<span></span>&#8203;<span></span></div></div>
     <div id="renderedURLTemplate"><span><span></span><b></b><span></span></span></div>
-    <div id="netFilteringDialog" class="modalDialog">
-        <div class="dialog">
-            <div class="hide preview"></div>
-            <div class="headers">
-                <span class="header dynamic selected" data-container="dynamic" data-i18n="loggerURLFilteringHeader"></span>
-                <span class="header static" data-container="static" data-i18n="loggerStaticFilteringHeader"></span>
-                <span class="tools"><span class="fa-icon reload">refresh</span>&ensp;<span class="fa-icon picker">eye-dropper</span></span>
+    <!-- Overlay card for filter-able entries -->
+    <div id="netFilteringDialog">
+        <div class="hide preview"></div>
+        <div class="headers">
+            <span class="header dynamic selected" data-container="dynamic" data-i18n="loggerURLFilteringHeader"></span>
+            <span class="header static" data-container="static" data-i18n="loggerStaticFilteringHeader"></span>
+            <span class="tools"><span class="fa-icon reload">refresh</span>&ensp;<span class="fa-icon picker">eye-dropper</span></span>
+        </div>
+        <div class="containers">
+            <div class="container dynamic selected">
+                <table class="toolbar">
+                    <colgroup><col><col></colgroup>
+                    <tbody>
+                    <tr>
+                        <td><span id="saveRules" class="fa-icon">lock</span>
+                        <td><p>
+                            <label><span data-i18n="loggerURLFilteringContextLabel"></span> <select class="dynamic origin"></select></label>&emsp;
+                            <label><span data-i18n="loggerURLFilteringTypeLabel"></span> <select class="dynamic type"><option><option value="*">*</select></label>
+                            </p>
+                    <tr class="entry">
+                        <td><div class="action"><span class="allow">&nbsp;</span><span class="noop">&nbsp;</span><span class="block">&nbsp;</span></div>
+                        <td class="url">
+                    </tbody>
+                </table>
+                <table class="entries">
+                    <colgroup><col><col></colgroup>
+                    <tbody></tbody>
+                </table>
             </div>
-            <div class="containers">
-                <div class="container dynamic selected">
-                    <table class="toolbar">
-                        <colgroup><col><col></colgroup>
-                        <tbody>
-                        <tr>
-                            <td><span id="saveRules" class="fa-icon">lock</span>
-                            <td><p>
-                                <label><span data-i18n="loggerURLFilteringContextLabel"></span> <select class="dynamic origin"></select></label>&emsp;
-                                <label><span data-i18n="loggerURLFilteringTypeLabel"></span> <select class="dynamic type"><option><option value="*">*</select></label>
-                                </p>
-                        <tr class="entry">
-                            <td><div class="action"><span class="allow">&nbsp;</span><span class="noop">&nbsp;</span><span class="block">&nbsp;</span></div>
-                            <td class="url">
-                        </tbody>
-                    </table>
-                    <table class="entries">
-                        <colgroup><col><col></colgroup>
-                        <tbody></tbody>
-                    </table>
-                </div>
-                <div class="container static">
-                    <p></p>
-                    <p><textarea class="staticFilter" spellcheck="false" value=""></textarea>
-                       <button id="createStaticFilter" class="custom important" type="button" data-i18n="pickerCreate"></button>
-                   </p>
-                </div>
+            <div class="container static">
+                <p></p>
+                <p><textarea class="staticFilter" spellcheck="false" value=""></textarea>
+                   <button id="createStaticFilter" class="custom important" type="button" data-i18n="pickerCreate"></button>
+               </p>
             </div>
         </div>
     </div>

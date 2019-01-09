@@ -254,7 +254,7 @@ body.colorBlind #vwRenderer .logEntry > div.cosmetic,
 body.colorBlind #vwRenderer .logEntry > div.redirect {
     background-color: rgba(0, 19, 110, 0.1);
     }
-#vwRenderer .logEntry > div[data-type="separator"] {
+#vwRenderer .logEntry > div[data-type="tabLoad"] {
     background-color: #666;
     color: white;
     }
@@ -301,7 +301,7 @@ body.colorBlind #vwRenderer .logEntry > div.redirect {
 #vwRenderer .logEntry > div.canLookup > span:nth-of-type(2) {
     cursor: zoom-in;
     }
-#vwRenderer .logEntry > div.messageRealm[data-type="separator"] > span:nth-of-type(2) {
+#vwRenderer .logEntry > div.messageRealm[data-type="tabLoad"] > span:nth-of-type(2) {
     text-align: center;
     }
 #vwRenderer .logEntry > div > span:nth-of-type(3) {
@@ -369,7 +369,6 @@ body.colorBlind #vwRenderer .logEntry > div.redirect {
 #vwRenderer .logEntry > div > span:nth-of-type(6) {
     }
 #vwRenderer #vwContent .logEntry > div > span:nth-of-type(6) {
-    text-overflow: ellipsis;
     }
 #vwRenderer .logEntry > div > span:nth-of-type(7) {
     }
@@ -419,135 +418,6 @@ body.colorBlind #vwRenderer .logEntry > div.allowed > span:nth-of-type(7) b {
     width: 100%;
     }
 
-#netInspector tr.cat_info {
-    color: #00f;
-    }
-#netInspector tr.blocked {
-    background-color: rgba(192, 0, 0, 0.1);
-    }
-body.colorBlind #netInspector tr.blocked {
-    background-color: rgba(0, 19, 110, 0.1);
-    }
-#netInspector tr.nooped {
-    background-color: rgba(108, 108, 108, 0.1);
-    }
-body.colorBlind #netInspector tr.nooped {
-    background-color: rgba(96, 96, 96, 0.1);
-    }
-#netInspector tr.allowed {
-    background-color: rgba(0, 160, 0, 0.1);
-    }
-body.colorBlind #netInspector tr.allowed {
-    background-color: rgba(255, 194, 57, 0.1)
-    }
-#netInspector tr.cosmetic,
-#netInspector tr.redirect {
-    background-color: rgba(255, 255, 0, 0.1);
-    }
-body.colorBlind #netInspector tr.cosmetic,
-body.colorBlind #netInspector tr.redirect {
-    background-color: rgba(0, 19, 110, 0.1);
-    }
-#netInspector tr.maindoc {
-    background-color: #666;
-    color: white;
-    text-align: center;
-    }
-
-/* TODO: cleanup */
-body #netInspector td {
-    border: 1px solid #ccc;
-    border-top: none;
-    min-width: 0.5em;
-    padding: 3px;
-    vertical-align: top;
-    white-space: normal;
-    word-break: break-all;
-    word-wrap: break-word;
-    }
-#netInspector tr td {
-    border-top: 1px solid #ccc;
-    }
-#netInspector tr td:first-of-type {
-    border-left: none;
-    }
-#netInspector tr td:last-of-type {
-    border-right: none;
-    }
-#netInspector.vCompact tr:not(.vExpanded) td {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    }
-#netInspector tr[data-tabid].void {
-    opacity: 0.3;
-    }
-#netInspector tr[data-tabid].void:hover {
-    opacity: 0.7;
-    }
-
-#netInspector tr td:nth-of-type(1) {
-    cursor: default;
-    text-align: right;
-    white-space: nowrap;
-    }
-#netInspector tr td:nth-of-type(2) {
-    }
-#netInspector tr.canLookup td:nth-of-type(2) {
-    cursor: zoom-in;
-    }
-#netInspector tr.cat_net td:nth-of-type(3),
-#netInspector tr.cat_cosmetic td:nth-of-type(3),
-#netInspector tr.cat_redirect td:nth-of-type(3) {
-    font: 12px monospace;
-    text-align: center;
-    white-space: nowrap;
-    }
-#netInspector tr.cat_net td:nth-of-type(3) {
-    cursor: pointer;
-    }
-#netInspector tr.cat_net td:nth-of-type(3):hover {
-    background: #ccc;
-    }
-#netInspector tr td:nth-of-type(4) {
-    }
-#netInspector tr[data-dochn] td:nth-of-type(4) {
-    direction: rtl;
-    }
-#netInspector tr td:nth-of-type(5) {
-    cursor: default;
-    overflow: visible !important;
-    position: relative;
-    text-align: center;
-    }
-#netInspector tr td[data-parties]:nth-of-type(5) {
-    cursor: zoom-in;
-    }
-#netInspector tr.cat_net td:nth-of-type(7) > span > b {
-    font-weight: bold;
-    }
-#netInspector tr td:nth-of-type(7) b {
-    font-weight: normal;
-    }
-#netInspector tr.blocked td:nth-of-type(7) b {
-    background-color: rgba(192, 0, 0, 0.2);
-    }
-body.colorBlind #netInspector tr.blocked td:nth-of-type(7) b {
-    background-color: rgba(0, 19, 110, 0.2);
-    }
-#netInspector tr.nooped td:nth-of-type(7) b {
-    background-color: rgba(108, 108, 108, 0.2);
-    }
-body.colorBlind #netInspector tr.nooped td:nth-of-type(7) b {
-    background-color: rgba(96, 96, 96, 0.2);
-    }
-#netInspector tr.allowed td:nth-of-type(7) b {
-    background-color: rgba(0, 160, 0, 0.2);
-    }
-body.colorBlind #netInspector tr.allowed td:nth-of-type(7) b {
-    background-color: rgba(255, 194, 57, 0.2);
-    }
-
 #popupContainer {
     background: white;
     border: 1px solid gray;
@@ -564,16 +434,13 @@ body.colorBlind #netInspector tr.allowed td:nth-of-type(7) b {
     display: block;
     }
 
-.modalDialog {
+#modalOverlay {
     align-items: center;
-    -webkit-align-items: center;
     background-color: rgba(0, 0, 0, 0.5);
     border: 0;
     bottom: 0;
-    display: flex;
-    display: -webkit-flex;
+    display: none;
     justify-content: center;
-    -webkit-justify-content: center;
     left: 0;
     margin: 0;
     position: fixed;
@@ -581,27 +448,44 @@ body.colorBlind #netInspector tr.allowed td:nth-of-type(7) b {
     top: 0;
     z-index: 400;
     }
-
-.modalDialog .dialog {
+#modalOverlay.on {
+    display: flex;
+    }
+#modalOverlay > div {
+    position: relative;
+    }
+#modalOverlay > div > div:nth-of-type(1) {
     background-color: white;
-    border: 2px solid white;
+    border: 0;
     box-sizing: border-box;
-    width: 90vw;
+    padding: 1em;
     max-height: 90vh;
     overflow-y: auto;
+    width: 90vw;
+    }
+#modalOverlay > div > div:nth-of-type(2) {
+    stroke: #000;
+    stroke-width: 3px;
+    position: absolute;
+    width: 1.6em;
+    height: 1.6em;
+    bottom: calc(100% + 2px);
+    right: 0;
+    background-color: white;
+    }
+#modalOverlay > div > div:nth-of-type(2):hover {
+    background-color: #eee;
     }
 
-#netFilteringDialog .dialog p {
+#netFilteringDialog p {
     line-height: 2em;
     }
-
-#netFilteringDialog .dialog select {
+#netFilteringDialog select {
     max-width: 75%;
     outline: none;
     padding: 0.2em;
 }
-
-#netFilteringDialog .dialog > div.preview {
+#netFilteringDialog > div.preview {
     /* http://lea.verou.me/css3patterns/ */
     background-color: #aaa;
     background-image:
@@ -625,33 +509,33 @@ body.colorBlind #netInspector tr.allowed td:nth-of-type(7) b {
     background-size: 18px 18px;
     text-align: center;
     }
-#netFilteringDialog .dialog > div.preview > * {
+#netFilteringDialog > div.preview > * {
     max-width: 100%;
     max-height: 40vh;
     }
 
-#netFilteringDialog .dialog table {
+#netFilteringDialog table {
     border: 0;
     border-collapse: collapse;
     table-layout: fixed;
     width: 100%;
     }
-#netFilteringDialog .dialog table > colgroup > col:nth-of-type(1) {
+#netFilteringDialog table > colgroup > col:nth-of-type(1) {
     width: 3.8em;
     }
-#netFilteringDialog .dialog table > colgroup > col:nth-of-type(2) {
+#netFilteringDialog table > colgroup > col:nth-of-type(2) {
     }
 
-#netFilteringDialog .dialog td {
+#netFilteringDialog td {
     border: 0;
     padding: 0;
     vertical-align: middle;
     }
-#netFilteringDialog .dialog > div.headers {
+#netFilteringDialog > div.headers {
     border-bottom: 1px solid #888;
     position: relative;
     }
-#netFilteringDialog .dialog > div.headers > span.header {
+#netFilteringDialog > div.headers > span.header {
     background-color: #eee;
     border: 1px solid #aaa;
     border-bottom: 1px solid #888;
@@ -668,49 +552,49 @@ body.colorBlind #netInspector tr.allowed td:nth-of-type(7) b {
     text-align: center;
     top: 1px;
     }
-#netFilteringDialog .dialog > div.headers > span.header.selected {
+#netFilteringDialog > div.headers > span.header.selected {
     background-color: white;
     border-color: #888;
     border-bottom: 1px solid white;
     color: black;
     }
-#netFilteringDialog .dialog > div.headers > span.tools {
+#netFilteringDialog > div.headers > span.tools {
     display: inline-block;
     position: absolute;
     top: 50%;
     transform: translate(0, -50%);
     }
-body[dir="ltr"] #netFilteringDialog .dialog > div.headers > span.tools {
+body[dir="ltr"] #netFilteringDialog > div.headers > span.tools {
     right: 0.1em;
     }
-body[dir="rtl"] #netFilteringDialog .dialog > div.headers > span.tools {
+body[dir="rtl"] #netFilteringDialog > div.headers > span.tools {
     left: 0.1em;
     }
-#netFilteringDialog .dialog > div.headers > span.tools > span {
+#netFilteringDialog > div.headers > span.tools > span {
     cursor: pointer;
     font-size: 1.2em;
     padding: 0.2em 0.4em;
     text-align: center;
     }
-#netFilteringDialog .dialog > div.headers > span.tools > span:hover {
+#netFilteringDialog > div.headers > span.tools > span:hover {
     background-color: #eee;
     }
-#netFilteringDialog .dialog > div.containers {
+#netFilteringDialog > div.containers {
     height: 40vh;
     overflow: hidden;
     overflow-y: auto;
     }
-#netFilteringDialog .dialog > div.containers > div {
+#netFilteringDialog > div.containers > div {
     display: none;
     }
-#netFilteringDialog .dialog > div.containers > div.selected {
+#netFilteringDialog > div.containers > div.selected {
     display: block;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic > table.toolbar select {
+#netFilteringDialog > div.containers > div.dynamic > table.toolbar select {
     font: 14px;
     height: 2.5em;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic > table.toolbar #saveRules {
+#netFilteringDialog > div.containers > div.dynamic > table.toolbar #saveRules {
     background-color: #ffe;
     border: 1px solid #ddc;
     border-radius: 4px;
@@ -721,37 +605,37 @@ body[dir="rtl"] #netFilteringDialog .dialog > div.headers > span.tools {
     padding: 0.25em 0.5em;
     visibility: hidden;
     }
-body.dirty #netFilteringDialog .dialog > div.containers > div.dynamic > table.toolbar #saveRules {
+body.dirty #netFilteringDialog > div.containers > div.dynamic > table.toolbar #saveRules {
     visibility: visible;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic > table.toolbar #saveRules:hover {
+#netFilteringDialog > div.containers > div.dynamic > table.toolbar #saveRules:hover {
     fill: black;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic > table.toolbar tr.entry {
+#netFilteringDialog > div.containers > div.dynamic > table.toolbar tr.entry {
     display: none;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry {
+#netFilteringDialog > div.containers > div.dynamic tr.entry {
     background-color: #e6e6e6;
     border: 0;
     border-bottom: 1px solid white;
     font-size: 13px;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry:hover {
+#netFilteringDialog > div.containers > div.dynamic tr.entry:hover {
     background-color: #f0f0f0;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td:first-of-type {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td:first-of-type {
     border: 0;
     border-right: 1px solid white;
     text-align: center;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action {
     background-color: transparent;
     border: 0;
     cursor: pointer;
     height: 2em;
     width: 100%;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action > span {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action > span {
     background-color: transparent;
     border: 0;
     display: inline-block;
@@ -760,90 +644,90 @@ body.dirty #netFilteringDialog .dialog > div.containers > div.dynamic > table.to
     visibility: hidden;
     width: 33.33%;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.allow {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.allow {
     background-color: rgba(0, 160, 0, 0.3);
     }
-body.colorBlind #netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.allow {
+body.colorBlind #netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.allow {
     background-color: rgba(255, 194, 57, 0.4);
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.noop {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.noop {
     background-color: rgba(108, 108, 108, 0.3);
     }
-body.colorBlind #netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.noop {
+body.colorBlind #netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.noop {
     background-color: rgba(96, 96, 96, 0.4);
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.block {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.block {
     background-color: rgba(192, 0, 0, 0.3);
     }
-body.colorBlind #netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.block {
+body.colorBlind #netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.block {
     background-color: rgba(0, 19, 110, 0.4);
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.own.allow {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.own.allow {
     background-color: rgba(0, 160, 0, 1);
     }
-body.colorBlind #netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.own.allow {
+body.colorBlind #netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.own.allow {
     background-color: rgba(255, 194, 57, 1);
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.own.noop,
-body.colorBlind #netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.own.noop {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.own.noop,
+body.colorBlind #netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.own.noop {
     background-color: rgba(108, 108, 108, 1);
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.own.block {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.own.block {
     background-color: rgba(192, 0, 0, 1);
     }
-body.colorBlind #netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.own.block {
+body.colorBlind #netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action.own.block {
     background-color: rgba(0, 19, 110, 1);
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action:not(.own):hover > span {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action:not(.own):hover > span {
     opacity: 0.2;
     visibility: visible;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action:not(.own):hover > span:hover {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action:not(.own):hover > span:hover {
     opacity: 0.75;
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action > span.allow {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action > span.allow {
     background-color: rgb(0, 160, 0);
     }
-body.colorBlind  #netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action > span.allow {
+body.colorBlind  #netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action > span.allow {
     background-color: rgb(255, 194, 57);
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action > span.noop {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action > span.noop {
     background-color: rgb(108, 108, 108);
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action > span.block {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action > span.block {
     background-color: rgb(192, 0, 0);
     }
-body.colorBlind  #netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action > span.block {
+body.colorBlind  #netFilteringDialog > div.containers > div.dynamic tr.entry > td > div.action > span.block {
     background-color: rgb(0, 19, 110);
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td.url {
+#netFilteringDialog > div.containers > div.dynamic tr.entry > td.url {
     overflow: hidden;
     padding-left: 4px;
     text-overflow: ellipsis;
     white-space: nowrap;
     }
-#netFilteringDialog .dialog > div.containers > div.static > p {
+#netFilteringDialog > div.containers > div.static > p {
     margin: 0.75em 0;
     }
-#netFilteringDialog .dialog > div.containers > div.static textarea {
+#netFilteringDialog > div.containers > div.static textarea {
     height: 6em;
     }
-#netFilteringDialog .dialog > div.containers > div.static > p:nth-of-type(2) {
+#netFilteringDialog > div.containers > div.static > p:nth-of-type(2) {
     text-align: center;
     }
 
-#filterFinderDialog .dialog {
+#filterFinderDialog {
     padding: 1em;
     word-break: break-all;
     }
-#filterFinderDialog .dialog code {
+#filterFinderDialog code {
     background: #eee;
     font-size: 85%;
     padding: 3px;
     unicode-bidi: plaintext;
     white-space: pre-wrap;
     }
-#filterFinderDialog .dialog ul {
+#filterFinderDialog ul {
     font-size: larger;
     }
 #filterFinderDialog .filterFinderListEntry {
@@ -863,10 +747,10 @@ body.colorBlind  #netFilteringDialog .dialog > div.containers > div.dynamic tr.e
 #filterFinderDialog .filterFinderListEntry a.fa-icon[href=""] {
     display: none;
     }
-#filterFinderDialog .dialog > *:first-child {
+#filterFinderDialog > *:first-child {
     margin-top: 0;
     }
-#filterFinderDialog .dialog > *:last-child {
+#filterFinderDialog > *:last-child {
     margin-bottom: 0;
     }
 
